@@ -33,5 +33,38 @@
       ]
     }
   },
-  "stations": []
+  "stations": [
+    {
+      "polyIdx": 0,
+      "wayPointType": "START"
+    },
+    {
+      "polyIdx": 1,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 2,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 3,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 4,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 5,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 6,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 7,
+      "wayPointType": "DEST"
+    }
+  ]
 }
