@@ -2,91 +2,69 @@
   "polygon": {
     "lineString": {
       "points": [
-        { "x": 1712571, "y": 4814643 },
-        { "x": 1712580, "y": 4814650 },
-        { "x": 1712590, "y": 4814657 },
-        { "x": 1712600, "y": 4814665 },
-        { "x": 1712610, "y": 4814672 },
-        { "x": 1712620, "y": 4814680 },
-        { "x": 1712630, "y": 4814687 },
-        { "x": 1712640, "y": 4814695 },
-        { "x": 1712650, "y": 4814702 },
-        { "x": 1712660, "y": 4814710 },
-        { "x": 1712670, "y": 4814717 },
-        { "x": 1712680, "y": 4814725 },
-        { "x": 1712690, "y": 4814732 },
-        { "x": 1712700, "y": 4814740 },
-        { "x": 1712710, "y": 4814747 },
-        { "x": 1712720, "y": 4814755 },
-        { "x": 1712730, "y": 4814762 },
-        { "x": 1712740, "y": 4814770 },
-        { "x": 1712750, "y": 4814777 },
-        { "x": 1712760, "y": 4814785 },
-        { "x": 1712770, "y": 4814792 },
-        { "x": 1712780, "y": 4814800 },
-        { "x": 1712790, "y": 4814807 },
-        { "x": 1712800, "y": 4814815 },
-        { "x": 1712810, "y": 4814822 },
-        { "x": 1712820, "y": 4814830 },
-        { "x": 1712830, "y": 4814837 },
-        { "x": 1712840, "y": 4814845 },
-        { "x": 1712850, "y": 4814852 },
-        { "x": 1712860, "y": 4814860 },
-        { "x": 1712870, "y": 4814867 },
-        { "x": 1712880, "y": 4814875 },
-        { "x": 1712890, "y": 4814882 },
-        { "x": 1712900, "y": 4814890 },
-        { "x": 1712910, "y": 4814897 },
-        { "x": 1712920, "y": 4814905 },
-        { "x": 1712930, "y": 4814912 },
-        { "x": 1712940, "y": 4814920 },
-        { "x": 1712950, "y": 4814927 },
-        { "x": 1712960, "y": 4814935 },
-        { "x": 1712970, "y": 4814942 },
-        { "x": 1712980, "y": 4814950 }
+        {
+          "x": 4143131,
+          "y": 178318
+        },
+        {
+          "x": 4143074,
+          "y": 178412
+        },
+        {
+          "x": 4143046,
+          "y": 178401
+        },
+        {
+          "x": 4143021,
+          "y": 178335
+        },
+        {
+          "x": 4143083,
+          "y": 178258
+        },
+        {
+          "x": 4143114,
+          "y": 178278
+        },
+        {
+          "x": 4143131,
+          "y": 178318
+        }
       ]
     }
   },
   "stations": [
-    { "polyIdx": 0, "wayPointType": "START" },
-    { "polyIdx": 1, "wayPointType": "VIA" },
-    { "polyIdx": 2, "wayPointType": "VIA" },
-    { "polyIdx": 3, "wayPointType": "VIA" },
-    { "polyIdx": 4, "wayPointType": "VIA" },
-    { "polyIdx": 5, "wayPointType": "VIA" },
-    { "polyIdx": 6, "wayPointType": "VIA" },
-    { "polyIdx": 7, "wayPointType": "VIA" },
-    { "polyIdx": 8, "wayPointType": "VIA" },
-    { "polyIdx": 9, "wayPointType": "VIA" },
-    { "polyIdx": 10, "wayPointType": "VIA" },
-    { "polyIdx": 11, "wayPointType": "VIA" },
-    { "polyIdx": 12, "wayPointType": "VIA" },
-    { "polyIdx": 13, "wayPointType": "VIA" },
-    { "polyIdx": 14, "wayPointType": "VIA" },
-    { "polyIdx": 15, "wayPointType": "VIA" },
-    { "polyIdx": 16, "wayPointType": "VIA" },
-    { "polyIdx": 17, "wayPointType": "VIA" },
-    { "polyIdx": 18, "wayPointType": "VIA" },
-    { "polyIdx": 19, "wayPointType": "VIA" },
-    { "polyIdx": 20, "wayPointType": "VIA" },
-    { "polyIdx": 21, "wayPointType": "VIA" },
-    { "polyIdx": 22, "wayPointType": "VIA" },
-    { "polyIdx": 23, "wayPointType": "VIA" },
-    { "polyIdx": 24, "wayPointType": "VIA" },
-    { "polyIdx": 25, "wayPointType": "VIA" },
-    { "polyIdx": 26, "wayPointType": "VIA" },
-    { "polyIdx": 27, "wayPointType": "VIA" },
-    { "polyIdx": 28, "wayPointType": "VIA" },
-    { "polyIdx": 29, "wayPointType": "VIA" },
-    { "polyIdx": 30, "wayPointType": "VIA" },
-    { "polyIdx": 31, "wayPointType": "VIA" },
-    { "polyIdx": 32, "wayPointType": "VIA" },
-    { "polyIdx": 33, "wayPointType": "VIA" },
-    { "polyIdx": 34, "wayPointType": "VIA" },
-    { "polyIdx": 35, "wayPointType": "VIA" },
-    { "polyIdx": 36, "wayPointType": "VIA" },
-    { "polyIdx": 37, "wayPointType": "VIA" },
-    { "polyIdx": 38, "wayPointType": "VIA" },
-    { "polyIdx": 39, "wayPointType": "DEST" }
+    {
+      "polyIdx": 0,
+      "wayPointType": "START"
+    },
+    {
+      "polyIdx": 1,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 2,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 3,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 4,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 5,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 6,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 7,
+      "wayPointType": "DEST"
+    }
   ]
 }
