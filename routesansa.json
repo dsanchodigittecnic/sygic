@@ -1,0 +1,75 @@
+{
+  "polygon": {
+    "lineString": {
+      "points": [
+        { "x": 178218, "y": 4143168 },
+        { "x": 178131, "y": 4143159 },
+        { "x": 178142, "y": 4143095 },
+        { "x": 178275, "y": 4143058 },
+        { "x": 178380, "y": 4142983 },
+        { "x": 178449, "y": 4142929 },
+        { "x": 178590, "y": 4142782 },
+        { "x": 178558, "y": 4142690 },
+        { "x": 178605, "y": 4142682 },
+        { "x": 178628, "y": 4142771 },
+        { "x": 178549, "y": 4142937 },
+        { "x": 178460, "y": 4143033 },
+        { "x": 178218, "y": 4143168 }
+      ]
+    }
+  },
+  "stations": [
+    {
+      "polyIdx": 0,
+      "wayPointType": "START"
+    },
+    {
+      "polyIdx": 1,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 2,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 3,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 4,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 5,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 6,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 7,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 8,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 9,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 10,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 11,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 12,
+      "wayPointType": "DEST"
+    }
+  ]
+}
