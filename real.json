@@ -1,0 +1,482 @@
+{
+  "polygon": {
+    "lineString": {
+      "points": [
+        {
+          "x": 469678,
+          "y": 4380690
+        },
+        {
+          "x": 469562,
+          "y": 4380668
+        },
+        {
+          "x": 469874,
+          "y": 4380884
+        },
+        {
+          "x": 469903,
+          "y": 4380766
+        },
+        {
+          "x": 469758,
+          "y": 4380831
+        },
+        {
+          "x": 469857,
+          "y": 4380856
+        },
+        {
+          "x": 469930,
+          "y": 4380873
+        },
+        {
+          "x": 470011,
+          "y": 4380898
+        },
+        {
+          "x": 469989,
+          "y": 4380787
+        },
+        {
+          "x": 469953,
+          "y": 4380847
+        },
+        {
+          "x": 470118,
+          "y": 4380708
+        },
+        {
+          "x": 470147,
+          "y": 4380782
+        },
+        {
+          "x": 470128,
+          "y": 4380890
+        },
+        {
+          "x": 470172,
+          "y": 4380466
+        },
+        {
+          "x": 470260,
+          "y": 4380553
+        },
+        {
+          "x": 470405,
+          "y": 4380357
+        },
+        {
+          "x": 470341,
+          "y": 4380490
+        },
+        {
+          "x": 470437,
+          "y": 4380260
+        },
+        {
+          "x": 470485,
+          "y": 4379993
+        },
+        {
+          "x": 470466,
+          "y": 4380141
+        },
+        {
+          "x": 470441,
+          "y": 4379852
+        },
+        {
+          "x": 469670,
+          "y": 4379996
+        },
+        {
+          "x": 469824,
+          "y": 4380031
+        },
+        {
+          "x": 469732,
+          "y": 4380060
+        },
+        {
+          "x": 469498,
+          "y": 4379844
+        },
+        {
+          "x": 469373,
+          "y": 4380040
+        },
+        {
+          "x": 468943,
+          "y": 4380273
+        },
+        {
+          "x": 468753,
+          "y": 4380378
+        },
+        {
+          "x": 468720,
+          "y": 4380287
+        },
+        {
+          "x": 469387,
+          "y": 4380348
+        },
+        {
+          "x": 469941,
+          "y": 4380470
+        },
+        {
+          "x": 469878,
+          "y": 4380508
+        },
+        {
+          "x": 469742,
+          "y": 4380739
+        },
+        {
+          "x": 469790,
+          "y": 4380698
+        },
+        {
+          "x": 469585,
+          "y": 4380307
+        },
+        {
+          "x": 469539,
+          "y": 4380327
+        },
+        {
+          "x": 469471,
+          "y": 4380352
+        },
+        {
+          "x": 470042,
+          "y": 4381008
+        },
+        {
+          "x": 470007,
+          "y": 4381069
+        },
+        {
+          "x": 469904,
+          "y": 4381182
+        },
+        {
+          "x": 469945,
+          "y": 4381195
+        },
+        {
+          "x": 469868,
+          "y": 4381228
+        },
+        {
+          "x": 469873,
+          "y": 4381313
+        },
+        {
+          "x": 469818,
+          "y": 4381514
+        },
+        {
+          "x": 469815,
+          "y": 4381566
+        },
+        {
+          "x": 469880,
+          "y": 4381648
+        },
+        {
+          "x": 469244,
+          "y": 4381183
+        },
+        {
+          "x": 469218,
+          "y": 4381112
+        },
+        {
+          "x": 469200,
+          "y": 4381043
+        },
+        {
+          "x": 469161,
+          "y": 4380936
+        },
+        {
+          "x": 469158,
+          "y": 4380885
+        },
+        {
+          "x": 469142,
+          "y": 4380757
+        },
+        {
+          "x": 469145,
+          "y": 4380731
+        },
+        {
+          "x": 469135,
+          "y": 4380644
+        },
+        {
+          "x": 469127,
+          "y": 4380590
+        },
+        {
+          "x": 469202,
+          "y": 4380494
+        },
+        {
+          "x": 469091,
+          "y": 4380343
+        },
+        {
+          "x": 469188,
+          "y": 4380423
+        },
+        {
+          "x": 469059,
+          "y": 4380488
+        }
+      ]
+    }
+  },
+  "stations": [
+    {
+      "polyIdx": 0,
+      "wayPointType": "START"
+    },
+    {
+      "polyIdx": 1,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 2,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 3,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 4,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 5,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 6,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 7,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 8,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 9,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 10,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 11,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 12,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 13,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 14,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 15,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 16,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 17,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 18,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 19,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 20,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 21,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 22,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 23,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 24,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 25,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 26,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 27,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 28,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 29,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 30,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 31,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 32,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 33,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 34,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 35,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 36,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 37,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 38,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 39,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 40,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 41,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 42,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 43,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 44,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 45,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 46,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 47,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 48,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 49,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 50,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 51,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 52,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 53,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 54,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 55,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 56,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 57,
+      "wayPointType": "VIA"
+    },
+    {
+      "polyIdx": 58,
+      "wayPointType": "DEST"
+    }
+  ]
+}
