@@ -589,27 +589,30 @@ geotab.addin.sygic = function (api, state) {
 
       let addonUser = await getUser();
 
-      document
-        .getElementById('sygic-edit-dimensions')
-        .addEventListener('click', (event) => {
+      const editDimensionsBtn = document.getElementById('sygic-edit-dimensions');
+      if (editDimensionsBtn) {
+        editDimensionsBtn.addEventListener('click', (event) => {
           event.preventDefault();
           toggleDimensionsBox();
         });
+      }
 
-      document
-        .getElementById('sygic-save-dimensions')
-        .addEventListener('click', async function (event) {
+      const saveDimensionsBtn = document.getElementById('sygic-save-dimensions');
+      if (saveDimensionsBtn) {
+        saveDimensionsBtn.addEventListener('click', async function (event) {
           event.preventDefault();
           await saveDimensions(freshState.device.id, addonUser.isMetric);
         });
+      }
 
-      document
-        .getElementById('sygic-update-maps')
-        .addEventListener('click', async function (event) {
+      const updateMapsBtn = document.getElementById('sygic-update-maps');
+      if (updateMapsBtn) {
+        updateMapsBtn.addEventListener('click', async function (event) {
           event.preventDefault();
           let location = 'com.sygic.aura://update|all';
           window.open(location, '_system');
         });
+      }
 
       // MUST call initializeCallback when done any setup
       initializeCallback();
