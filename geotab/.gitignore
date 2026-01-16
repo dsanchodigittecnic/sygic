@@ -1,0 +1,4 @@
+node_modules
+.vscode
+/sygic-geotab-utils/lib/*
+/.idea
