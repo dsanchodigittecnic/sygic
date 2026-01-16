@@ -1,10 +1,23 @@
 {
-    "name": "Sygic Professional Navigation TEST",
+    "name": "Sygic Professional Navigation",
     "supportEmail": "os-team@sygic.com",
     "version": "0.0.1",
     "items": [
         {
-            "url": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/src/app/sygic.html",
+            "url": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/dist/sygic.html",
+            "path": "",
+            "menuName": {
+                "de": "Sygic Truck Einstellungen",
+                "en": "Sygic Truck Settings",
+                "es": "Configuración Sygic Truck",
+                "fr": "Paramètres Sygic Truck",
+                "it": "Sygic Truck Impostazioni",
+                "pl": "Ustawienia Sygic Truck"
+            },
+            "icon": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/mygeotab-sygic-page/dist/images/icon.svg"
+        },
+        {
+            "url": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/geotabdrive-sygic-addin/dist/sygic.html",
             "path": "DriveAppLink/",
             "menuName": {
                 "de": "Sygic Truck Einstellungen",
@@ -14,7 +27,7 @@
                 "it": "Sygic Truck Impostazioni",
                 "pl": "Ustawienia Sygic Truck"
             },
-            "icon": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/src/app/images/icon.svg"
+            "icon": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/geotabdrive-sygic-addin/dist/images/icon.svg"
         }
     ],
     "solutionId": "sygicSygic",
