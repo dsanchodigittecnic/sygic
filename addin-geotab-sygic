@@ -4,7 +4,7 @@
     "version": "0.0.1",
     "items": [
         {
-            "url": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/dist/sygic.html",
+            "url": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/mygeotab-sygic-page/dist/mygeotabSygicPage.html",
             "path": "",
             "menuName": {
                 "de": "Sygic Truck Einstellungen",
@@ -17,7 +17,7 @@
             "icon": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/mygeotab-sygic-page/dist/images/icon.svg"
         },
         {
-            "url": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/geotabdrive-sygic-addin/dist/sygic.html",
+            "url": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/dist/sygic.html",
             "path": "DriveAppLink/",
             "menuName": {
                 "de": "Sygic Truck Einstellungen",
