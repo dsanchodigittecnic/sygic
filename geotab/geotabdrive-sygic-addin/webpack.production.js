@@ -9,7 +9,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const config = require('./src/app/config.json');
 
 const getHost = function () {
-    return "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/dist/";
+    return config.dev.dist.host.replace("__VERSION__", `${process.env.npm_package_version}`);
 }
 /**
  * Removes "dev" element of the config tree on production build
