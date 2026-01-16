@@ -1,0 +1,35 @@
+{
+    "name": "Sygic Professional Navigation",
+    "supportEmail": "os-team@sygic.com",
+    "version": "0.0.1",
+    "items": [
+        {
+            "url": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/mygeotab-sygic-page/dist/mygeotabSygicPage.html",
+            "path": "",
+            "menuName": {
+                "de": "Sygic Truck Einstellungen",
+                "en": "Sygic Truck Settings",
+                "es": "Configuración Sygic Truck",
+                "fr": "Paramètres Sygic Truck",
+                "it": "Sygic Truck Impostazioni",
+                "pl": "Ustawienia Sygic Truck"
+            },
+            "icon": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/mygeotab-sygic-page/dist/images/icon.svg"
+        },
+        {
+            "url": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/geotabdrive-sygic-addin/dist/sygic.html",
+            "path": "DriveAppLink/",
+            "menuName": {
+                "de": "Sygic Truck Einstellungen",
+                "en": "Sygic Truck Settings",
+                "es": "Configuración Sygic Truck",
+                "fr": "Paramètres Sygic Truck",
+                "it": "Sygic Truck Impostazioni",
+                "pl": "Ustawienia Sygic Truck"
+            },
+            "icon": "https://cdn.jsdelivr.net/gh/sygic/geotab@master/geotabdrive-sygic-addin/dist/images/icon.svg"
+        }
+    ],
+    "solutionId": "sygicSygic",
+    "isSigned": false
+}

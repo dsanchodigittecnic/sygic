@@ -75,6 +75,7 @@
     "@babel/polyfill": "^7.12.1",
     "node-geometry-library": "^1.2.6",
     "react-scripts": "^5.0.1",
+    "sygic-geotab-utils": "file:../sygic-geotab-utils",
     "underscore": "^1.12.0"
   }
 }

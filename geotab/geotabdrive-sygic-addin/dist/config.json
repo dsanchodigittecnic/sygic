@@ -5,7 +5,7 @@
   "version": "1.0",
   "items": [
     {
-      "url": "https://cdn.jsdelivr.net/gh/sygic/geotab@2.0.5/geotabdrive-sygic-addin/dist/sygic.html",
+      "url": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/src/app/sygic.html",
       "path": "DriveAppLink/",
       "menuName": {
         "en": "Sygic Professional Navigation",
@@ -15,7 +15,7 @@
         "it": "Navigazione Sygic Professional",
         "pl": "Profesjonalna nawigacja Sygic"
       },
-      "icon": "https://cdn.jsdelivr.net/gh/sygic/geotab@2.0.5/geotabdrive-sygic-addin/dist/images/icon.svg"
+      "icon": "https://dsanchodigittecnic.github.io/sygic/geotab/geotabdrive-sygic-addin/src/app/images/icon.svg"
     }
   ],
   "isSigned": "false"
