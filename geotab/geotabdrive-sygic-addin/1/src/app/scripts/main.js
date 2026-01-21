@@ -494,31 +494,6 @@ geotab.addin.sygic = function (api, state) {
         headerRow
       );
 
-      // Botón Open itinerary en el header
-      let quickOpenButton = createElement(
-        'button',
-        {
-          content: state.translate('Open itinerary'),
-          classes: ['route-open-button'],
-        },
-        headerRow
-      );
-      quickOpenButton.addEventListener('click', async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        quickOpenButton.setAttribute('disabled', 'disabled');
-        quickOpenButton.classList.add('route-open-button--loading');
-        try {
-          let zonePoints = await getRouteZonePoints(route);
-          let location = await createSygicTruckNavigateToItineraryUri(zonePoints);
-          window.open(location, '_system');
-        } finally {
-          quickOpenButton.classList.remove('route-open-button--loading');
-          quickOpenButton.removeAttribute('disabled');
-        }
-      });
-
       createElement(
         'div',
         {
@@ -631,20 +606,6 @@ geotab.addin.sygic = function (api, state) {
               window.open(location, '_system');
             });
           }
-
-          let itineraryOpenLink = createElement('button', {
-            content: state.translate('Open itinerary')
-          }, tableHolder);
-          itineraryOpenLink.setAttribute('href', '#');
-          itineraryOpenLink.addEventListener('click', async (event) => {
-            event.preventDefault();
-            let cachedPoints = routePointsCache.get(route.id) || zonePoints;
-            if (!routePointsCache.has(route.id)) {
-              routePointsCache.set(route.id, zonePoints);
-            }
-            let location = await createSygicTruckNavigateToItineraryUri(cachedPoints);
-            window.open(location, '_system');
-          });
 
         } else {
           tableHolder.innerHTML = '';
