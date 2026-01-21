@@ -455,7 +455,7 @@ geotab.addin.sygic = function (api, state) {
       let logIdButton = createElement(
         'button',
         {
-          content: 'Log Route ID',
+          content: 'Iniciar ruta',
           classes: ['button', 'button_small'],
         },
         container
