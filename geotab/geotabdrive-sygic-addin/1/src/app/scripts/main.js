@@ -366,6 +366,52 @@ geotab.addin.sygic = function (api, state) {
       return [cx, cy];
     }
 
+    const zoneCache = new Map();
+    const routePointsCache = new Map();
+
+    async function getZoneById(zoneId) {
+      if (!zoneId) {
+        return null;
+      }
+      if (zoneCache.has(zoneId)) {
+        return zoneCache.get(zoneId);
+      }
+      let results = await geotabApi.callAsync('Get', {
+        typeName: 'Zone',
+        search: {
+          id: zoneId,
+        },
+      });
+      let zone = results && results[0] ? results[0] : null;
+      zoneCache.set(zoneId, zone);
+      return zone;
+    }
+
+    async function getRouteZonePoints(route) {
+      if (!route || !route.id) {
+        return [];
+      }
+      if (routePointsCache.has(route.id)) {
+        return routePointsCache.get(route.id);
+      }
+      let zonePoints = [];
+      for (let index = 0; index < route.routePlanItemCollection.length; index++) {
+        const stop = route.routePlanItemCollection[index];
+        if (!stop.zone || !stop.zone.id) {
+          continue;
+        }
+        let zone = await getZoneById(stop.zone.id);
+        if (!zone || !zone.points || zone.points.length === 0) {
+          continue;
+        }
+        let pts = zone.points.map(p => [p.y, p.x]);
+        let center = calculateCenter(pts);
+        zonePoints.push({ lat: center[0], lng: center[1] });
+      }
+      routePointsCache.set(route.id, zonePoints);
+      return zonePoints;
+    }
+
     // Fecha de hoy a las 00:00:00
     let today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -432,13 +478,46 @@ geotab.addin.sygic = function (api, state) {
         routeListItem
       );
 
+      let headerRow = createElement(
+        'div',
+        {
+          classes: ['route-header'],
+        },
+        container
+      );
+
       createElement(
         'div',
         {
           content: route.name,
         },
-        container
+        headerRow
       );
+
+      // Botón Open itinerary en el header
+      let quickOpenButton = createElement(
+        'button',
+        {
+          content: state.translate('Open itinerary'),
+          classes: ['route-open-button'],
+        },
+        headerRow
+      );
+      quickOpenButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        quickOpenButton.setAttribute('disabled', 'disabled');
+        quickOpenButton.classList.add('route-open-button--loading');
+        try {
+          let zonePoints = await getRouteZonePoints(route);
+          let location = await createSygicTruckNavigateToItineraryUri(zonePoints);
+          window.open(location, '_system');
+        } finally {
+          quickOpenButton.classList.remove('route-open-button--loading');
+          quickOpenButton.removeAttribute('disabled');
+        }
+      });
 
       createElement(
         'div',
@@ -454,7 +533,7 @@ geotab.addin.sygic = function (api, state) {
         container
       );
 
-      // Botón para abrir la ruta en Sygic
+      // Botón para abrir la ruta en Sygic (route_download)
       let sygicRouteButton = createElement(
         'button',
         {
@@ -511,13 +590,10 @@ geotab.addin.sygic = function (api, state) {
             index++
           ) {
             const stop = route.routePlanItemCollection[index];
-            let results = await geotabApi.callAsync('Get', {
-              typeName: 'Zone',
-              search: {
-                id: stop.zone.id,
-              },
-            });
-            let zone = results[0];
+            let zone = await getZoneById(stop.zone && stop.zone.id);
+            if (!zone) {
+              continue;
+            }
             let tr = createElement('tr', {}, table);
             tr.addEventListener('click', (event) => {
               event.preventDefault();
@@ -546,7 +622,7 @@ geotab.addin.sygic = function (api, state) {
 
             let lat = center[0];
             let lng = center[1];
-            zonePoints.push({ lat, lng })
+            zonePoints.push({ lat, lng });
 
             a.setAttribute('href', '#');
             a.addEventListener('click', async (event) => {
@@ -562,7 +638,11 @@ geotab.addin.sygic = function (api, state) {
           itineraryOpenLink.setAttribute('href', '#');
           itineraryOpenLink.addEventListener('click', async (event) => {
             event.preventDefault();
-            let location = await createSygicTruckNavigateToItineraryUri(zonePoints);
+            let cachedPoints = routePointsCache.get(route.id) || zonePoints;
+            if (!routePointsCache.has(route.id)) {
+              routePointsCache.set(route.id, zonePoints);
+            }
+            let location = await createSygicTruckNavigateToItineraryUri(cachedPoints);
             window.open(location, '_system');
           });
 
