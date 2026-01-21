@@ -472,7 +472,7 @@ geotab.addin.sygic = function (api, state) {
         const dimensions = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
         const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
         
-        let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${route.id}.json`);
+        let routeJsonUrl = `${SYGIC_ROUTES_BASE_URL}${route.id}.json`;
         let routeDownloadUri = `route_download|${routeJsonUrl}|json`;
         let backButtonUri = 'back_button|com.geotab.androidCheckmate';
         
@@ -481,7 +481,7 @@ geotab.addin.sygic = function (api, state) {
         let sygicUri = `${baseUri}${encodeURI(uri)}`;
         
         console.log('Sygic URI:', sygicUri);
-        window.location.href = sygicUri;
+        window.open(sygicUri, '_system');
       });
 
       let tableHolder = createElement(
