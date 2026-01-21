@@ -17,6 +17,9 @@ geotab.addin.sygic = function (api, state) {
 
   let cachedUser = null;
 
+  // URL base para descargar rutas en Sygic (modificar si cambia)
+  const SYGIC_ROUTES_BASE_URL = 'https://dsanchodigittecnic.github.io/sygic/route';
+
   let geotabApi = ApiWrapper(api);
 
   (function () {
@@ -451,19 +454,31 @@ geotab.addin.sygic = function (api, state) {
         container
       );
 
-      // Botón para mostrar el ID de la ruta en consola
-      let logIdButton = createElement(
-        'button',
+      // Enlace para abrir la ruta en Sygic
+      let sygicRouteLink = createElement(
+        'a',
         {
-          content: 'Iniciar ruta',
+          content: 'Iniciar ruta en Sygic',
           classes: ['button', 'button_small'],
         },
         container
       );
-      logIdButton.addEventListener('click', (event) => {
+      sygicRouteLink.setAttribute('href', '#');
+      sygicRouteLink.setAttribute('target', '_system');
+      sygicRouteLink.addEventListener('click', async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        console.log('Route ID:', route.id);
+        
+        let dimensionsInputs = Dimensions.getInputValues(elAddin);
+        let user = await getUser();
+        const dimensions = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
+        const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
+        let backButtonUri = 'back_button|com.geotab.androidCheckmate';
+        
+        let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${route.id}.json`);
+        let sygicUri = `com.sygic.aura://${truckSettingsUri}&&&route_download|${routeJsonUrl}|json&&&${backButtonUri}`;
+        
+        window.open(sygicUri, '_system');
       });
 
       let tableHolder = createElement(
