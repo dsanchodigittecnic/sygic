@@ -350,7 +350,6 @@ geotab.addin.sygic = function (api, state) {
       search: {
         routeType: 'Plan',
         fromDate: today.toISOString(),
-        toDate: tomorrow.toISOString(),
         deviceSearch: {
           id: deviceId,
         },
