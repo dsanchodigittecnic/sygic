@@ -451,6 +451,21 @@ geotab.addin.sygic = function (api, state) {
         container
       );
 
+      // Botón para mostrar el ID de la ruta en consola
+      let logIdButton = createElement(
+        'button',
+        {
+          content: 'Log Route ID',
+          classes: ['button', 'button_small'],
+        },
+        container
+      );
+      logIdButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log('Route ID:', route.id);
+      });
+
       let tableHolder = createElement(
         'div',
         {
