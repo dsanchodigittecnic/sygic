@@ -454,18 +454,16 @@ geotab.addin.sygic = function (api, state) {
         container
       );
 
-      // Enlace para abrir la ruta en Sygic
-      let sygicRouteLink = createElement(
-        'a',
+      // Botón para abrir la ruta en Sygic
+      let sygicRouteButton = createElement(
+        'button',
         {
-          content: 'Iniciar ruta en Sygic',
+          content: 'Abrir en Sygic',
           classes: ['button', 'button_small'],
         },
         container
       );
-      sygicRouteLink.setAttribute('href', '#');
-      sygicRouteLink.setAttribute('target', '_system');
-      sygicRouteLink.addEventListener('click', async (event) => {
+      sygicRouteButton.addEventListener('click', async (event) => {
         event.preventDefault();
         event.stopPropagation();
         
@@ -473,10 +471,9 @@ geotab.addin.sygic = function (api, state) {
         let user = await getUser();
         const dimensions = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
         const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
-        let backButtonUri = 'back_button|com.geotab.androidCheckmate';
         
         let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${route.id}.json`);
-        let sygicUri = `com.sygic.aura://${truckSettingsUri}&&&route_download|${routeJsonUrl}|json&&&${backButtonUri}`;
+        let sygicUri = `com.sygic.aura://${truckSettingsUri}&&&route_download|${routeJsonUrl}|json`;
         
         window.open(sygicUri, '_system');
       });
