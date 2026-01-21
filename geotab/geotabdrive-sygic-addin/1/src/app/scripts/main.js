@@ -1,5 +1,5 @@
 import _ from 'underscore';
-import { PolyUtil } from 'node-geometry-library';
+import {PolyUtil} from 'node-geometry-library';
 import {
   User,
   ApiWrapper,
@@ -220,14 +220,14 @@ geotab.addin.sygic = function (api, state) {
       value: viewModel.hazmat.value[key].value,
       key: key,
       label: viewModel.hazmat.value[key].label,
-      visible: viewModel.hazmat.value[key].visible,
-      options: viewModel.hazmat.value[key].options,
+      visible:  viewModel.hazmat.value[key].visible,
+      options:  viewModel.hazmat.value[key].options,
     }));
 
     document.getElementById('sygic-dimensions-summary-content').innerHTML =
-      summaryTemplate({ dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject });
+      summaryTemplate({dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject});
     document.getElementById('sygic-dimensions-form-content').innerHTML =
-      formTemplate({ dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject });
+      formTemplate({dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject});
   }
 
   function toggleDimensionsBox() {
@@ -282,7 +282,7 @@ geotab.addin.sygic = function (api, state) {
   }
 
   async function loadDevice(deviceId) {
-    if (deviceId) {
+    if (deviceId){
       let devices = await geotabApi.callAsync('Get', {
         typeName: 'Device',
         search: {
@@ -292,7 +292,7 @@ geotab.addin.sygic = function (api, state) {
 
       if (devices.length > 0) {
         let device = devices[0];
-        if (device.id) {
+        if (device.id){
           elAddin.querySelector('#sygic-vehicle').textContent = device.name;
           show(document.getElementById('sygic-dimensions-summary'));
           hide(document.getElementById('sygic-no-vehicle-warning'));
@@ -312,205 +312,222 @@ geotab.addin.sygic = function (api, state) {
 
   async function loadTrips(deviceId) {
 
-    function createElement(tag, options = {}, parent = null) {
-      let el = document.createElement(tag);
-      (options.classes || []).forEach((c) => {
-        el.classList.add(c);
-      });
-      if (options.content) {
-        el.appendChild(document.createTextNode(options.content));
-      }
-      if (options.style) {
-        el.style = options.style;
-      }
-      if (parent) {
-        parent.appendChild(el);
-      }
-      return el;
-    }
-
-    function calculateCenter(arr) {
-      var x = arr.map(xy => xy[0]);
-      var y = arr.map(xy => xy[1]);
-      var cx = (Math.min(...x) + Math.max(...x)) / 2;
-      var cy = (Math.min(...y) + Math.max(...y)) / 2;
-      return [cx, cy];
-    }
-
-    // Fecha de hoy a las 00:00:00
-    let today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Fecha de mañana a las 00:00:00 (límite superior)
-    let tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    let myRoutes = await geotabApi.callAsync('Get', {
-      typeName: 'Route',
-      search: {
-        routeType: 'Plan',
-        fromDate: today.toISOString(),
-        deviceSearch: {
-          id: deviceId,
-        },
-      },
+  function createElement(tag, options = {}, parent = null) {
+    let el = document.createElement(tag);
+    (options.classes || []).forEach((c) => {
+      el.classList.add(c);
     });
+    if (options.content) {
+      el.appendChild(document.createTextNode(options.content));
+    }
+    if (options.style) {
+      el.style = options.style;
+    }
+    if (parent) {
+      parent.appendChild(el);
+    }
+    return el;
+  }
 
-    let tripsContainer = elAddin.querySelector('#sygic-my-trips');
-    tripsContainer.innerHTML = '';
+  function calculateCenter(arr) {
+    var x = arr.map(xy => xy[0]);
+    var y = arr.map(xy => xy[1]);
+    var cx = (Math.min(...x) + Math.max(...x)) / 2;
+    var cy = (Math.min(...y) + Math.max(...y)) / 2;
+    return [cx, cy];
+  }
 
-    myRoutes.forEach((route) => {
+  // Fecha de hoy a las 00:00:00
+  let today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-      // Filtro manual para asegurar que solo se muestren rutas de hoy
-      if (route.startTime) {
-        let routeStartTime = new Date(route.startTime);
+  // Fecha de mañana a las 00:00:00 (límite superior)
+  let tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // Verificar que la ruta empieza HOY (no antes ni después)
-        if (routeStartTime < today || routeStartTime >= tomorrow) {
-          return; // Saltar esta ruta
-        }
-      } else {
-        // Si no tiene startTime, verificar por el primer stop
-        let firstStop = route.routePlanItemCollection[0];
-        if (firstStop && firstStop.activeFrom) {
-          let firstStopTime = new Date(firstStop.activeFrom);
-          if (firstStopTime < today || firstStopTime >= tomorrow) {
-            return;
-          }
-        } else {
-          return; // Sin fecha válida, saltar
-        }
-      }
+  console.log('=== DEBUG RUTAS ===');
+  console.log('Today:', today.toISOString());
+  console.log('Tomorrow:', tomorrow.toISOString());
 
-      let routeListItem = createElement(
-        'li',
+  let myRoutes = await geotabApi.callAsync('Get', {
+    typeName: 'Route',
+    search: {
+      routeType: 'Plan',
+      deviceSearch: {
+        id: deviceId,
+      },
+    },
+  });
+
+  console.log('Total rutas obtenidas:', myRoutes.length);
+  console.log('Rutas:', myRoutes);
+
+  let tripsContainer = elAddin.querySelector('#sygic-my-trips');
+  tripsContainer.innerHTML = '';
+
+  myRoutes.forEach((route, index) => {
+    console.log('--- Ruta ' + (index + 1) + ': ' + route.name + ' ---');
+    console.log('route.startTime:', route.startTime);
+    
+    let firstStop = route.routePlanItemCollection[0];
+    console.log('firstStop.activeFrom:', firstStop ? firstStop.activeFrom : null);
+
+    // Determinar la fecha de referencia de la ruta
+    let routeDate = null;
+    
+    if (route.startTime) {
+      routeDate = new Date(route.startTime);
+    } else if (firstStop && firstStop.activeFrom) {
+      routeDate = new Date(firstStop.activeFrom);
+    }
+
+    console.log('routeDate parseada:', routeDate);
+
+    if (!routeDate) {
+      console.log('SALTADA: Sin fecha válida');
+      return;
+    }
+
+    // Verificar si la ruta es de hoy
+    let isToday = routeDate >= today && routeDate < tomorrow;
+    console.log('Es de hoy:', isToday);
+
+    if (!isToday) {
+      console.log('SALTADA: No es de hoy');
+      return;
+    }
+
+    console.log('MOSTRADA: Ruta válida para hoy');
+
+    let routeListItem = createElement(
+      'li',
+      {
+        classes: ['menu-list__item'],
+      },
+      tripsContainer
+    );
+
+    let container = createElement(
+      'div',
+      {
+        style: 'flex-direction: column;',
+      },
+      routeListItem
+    );
+
+    createElement(
+      'div',
+      {
+        content: route.name,
+      },
+      container
+    );
+
+    createElement(
+      'div',
+      {
+        content: `${route.routePlanItemCollection.length} ${route.routePlanItemCollection.length == 1
+          ? state.translate('stop')
+          : state.translate('stops')
+          }, ${state.translate('first stop')} ${formatStopDate(
+            firstStop.activeFrom
+          )}`,
+        classes: ['caption'],
+      },
+      container
+    );
+
+    let tableHolder = createElement(
+      'div',
+      {
+        classes: ['hidden']
+      },
+      container
+    )
+
+    routeListItem.addEventListener('click', async (event) => {
+      event.preventDefault();
+
+      let table = createElement(
+        'table',
         {
-          classes: ['menu-list__item'],
+          classes: ['route-table'],
         },
-        tripsContainer
+        tableHolder
       );
 
-      let container = createElement(
-        'div',
-        {
-          style: 'flex-direction: column;',
-        },
-        routeListItem
-      );
-
-      createElement(
-        'div',
-        {
-          content: route.name,
-        },
-        container
-      );
-
-      let firstStop = route.routePlanItemCollection[0];
-
-      createElement(
-        'div',
-        {
-          content: `${route.routePlanItemCollection.length} ${route.routePlanItemCollection.length == 1
-            ? state.translate('stop')
-            : state.translate('stops')
-            }, ${state.translate('first stop')} ${formatStopDate(
-              firstStop.activeFrom
-            )}`,
-          classes: ['caption'],
-        },
-        container
-      );
-
-      let tableHolder = createElement(
-        'div',
-        {
-          classes: ['hidden']
-        },
-        container
-      )
-
-      routeListItem.addEventListener('click', async (event) => {
-        event.preventDefault();
-
-        let table = createElement(
-          'table',
-          {
-            classes: ['route-table'],
-          },
-          tableHolder
-        );
-
-        if (tableHolder.classList.contains('hidden')) {
-          let zonePoints = [];
-          for (
-            let index = 0;
-            index < route.routePlanItemCollection.length;
-            index++
-          ) {
-            const stop = route.routePlanItemCollection[index];
-            let results = await geotabApi.callAsync('Get', {
-              typeName: 'Zone',
-              search: {
-                id: stop.zone.id,
-              },
-            });
-            let zone = results[0];
-            let tr = createElement('tr', {}, table);
-            tr.addEventListener('click', (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            });
-            let td = createElement('td', {}, tr);
-            let a = createElement(
-              'a',
-              {
-                content: `${index + 1}. ${zone.name}`,
-              },
-              td
-            );
-
-            createElement(
-              'div',
-              {
-                content: `${formatStopDate(stop.activeFrom)}`,
-                classes: ['caption'],
-              },
-              td
-            );
-
-            let pts = zone.points.map(p => [p.y, p.x]);
-            let center = calculateCenter(pts);
-
-            let lat = center[0];
-            let lng = center[1];
-            zonePoints.push({ lat, lng })
-
-            a.setAttribute('href', '#');
-            a.addEventListener('click', async (event) => {
-              event.preventDefault();
-              let location = await createSygicTruckNavigateToPointUri(lat, lng);
-              window.open(location, '_system');
-            });
-          }
-
-          let itineraryOpenLink = createElement('button', {
-            content: state.translate('Open itinerary')
-          }, tableHolder);
-          itineraryOpenLink.setAttribute('href', '#');
-          itineraryOpenLink.addEventListener('click', async (event) => {
+      if (tableHolder.classList.contains('hidden')) {
+        let zonePoints = [];
+        for (
+          let index = 0;
+          index < route.routePlanItemCollection.length;
+          index++
+        ) {
+          const stop = route.routePlanItemCollection[index];
+          let results = await geotabApi.callAsync('Get', {
+            typeName: 'Zone',
+            search: {
+              id: stop.zone.id,
+            },
+          });
+          let zone = results[0];
+          let tr = createElement('tr', {}, table);
+          tr.addEventListener('click', (event) => {
             event.preventDefault();
-            let location = await createSygicTruckNavigateToItineraryUri(zonePoints);
+            event.stopPropagation();
+          });
+          let td = createElement('td', {}, tr);
+          let a = createElement(
+            'a',
+            {
+              content: `${index + 1}. ${zone.name}`,
+            },
+            td
+          );
+
+          createElement(
+            'div',
+            {
+              content: `${formatStopDate(stop.activeFrom)}`,
+              classes: ['caption'],
+            },
+            td
+          );
+
+          let pts = zone.points.map(p => [p.y, p.x]);
+          let center = calculateCenter(pts);
+
+          let lat = center[0];
+          let lng = center[1];
+          zonePoints.push({ lat, lng })
+
+          a.setAttribute('href', '#');
+          a.addEventListener('click', async (event) => {
+            event.preventDefault();
+            let location = await createSygicTruckNavigateToPointUri(lat, lng);
             window.open(location, '_system');
           });
-
-        } else {
-          tableHolder.innerHTML = '';
         }
-        tableHolder.classList.toggle('hidden');
-      });
+
+        let itineraryOpenLink = createElement('button', {
+          content: state.translate('Open itinerary')
+        }, tableHolder);
+        itineraryOpenLink.setAttribute('href', '#');
+        itineraryOpenLink.addEventListener('click', async (event) => {
+          event.preventDefault();
+          let location = await createSygicTruckNavigateToItineraryUri(zonePoints);
+          window.open(location, '_system');
+        });
+
+      } else {
+        tableHolder.innerHTML = '';
+      }
+      tableHolder.classList.toggle('hidden');
     });
-  }
+  });
+
+  console.log('=== FIN DEBUG ===');
+}
 
   async function loadDimensions(deviceId, isMetric) {
     const storage = new DimensionsStorage(geotabApi);
