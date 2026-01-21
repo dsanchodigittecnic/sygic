@@ -549,68 +549,79 @@ geotab.addin.sygic = function (api, state) {
       routeListItem.addEventListener('click', async (event) => {
         event.preventDefault();
 
-        let table = createElement(
-          'table',
-          {
-            classes: ['route-table'],
-          },
-          tableHolder
-        );
+        // Mostrar spinner y bloquear pantalla
+        let overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = '<div class="loading-spinner"></div>';
+        document.body.appendChild(overlay);
 
-        if (tableHolder.classList.contains('hidden')) {
-          let zonePoints = [];
-          for (
-            let index = 0;
-            index < route.routePlanItemCollection.length;
-            index++
-          ) {
-            const stop = route.routePlanItemCollection[index];
-            let zone = await getZoneById(stop.zone && stop.zone.id);
-            if (!zone) {
-              continue;
+        try {
+          let table = createElement(
+            'table',
+            {
+              classes: ['route-table'],
+            },
+            tableHolder
+          );
+
+          if (tableHolder.classList.contains('hidden')) {
+            let zonePoints = [];
+            for (
+              let index = 0;
+              index < route.routePlanItemCollection.length;
+              index++
+            ) {
+              const stop = route.routePlanItemCollection[index];
+              let zone = await getZoneById(stop.zone && stop.zone.id);
+              if (!zone) {
+                continue;
+              }
+              let tr = createElement('tr', {}, table);
+              tr.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              });
+              let td = createElement('td', {}, tr);
+              let a = createElement(
+                'a',
+                {
+                  content: `${index + 1}. ${zone.name}`,
+                },
+                td
+              );
+
+              createElement(
+                'div',
+                {
+                  content: `${formatStopDate(stop.activeFrom)}`,
+                  classes: ['caption'],
+                },
+                td
+              );
+
+              let pts = zone.points.map(p => [p.y, p.x]);
+              let center = calculateCenter(pts);
+
+              let lat = center[0];
+              let lng = center[1];
+              zonePoints.push({ lat, lng });
+
+              a.setAttribute('href', '#');
+              a.addEventListener('click', async (event) => {
+                event.preventDefault();
+                let location = await createSygicTruckNavigateToPointUri(lat, lng);
+                window.open(location, '_system');
+              });
             }
-            let tr = createElement('tr', {}, table);
-            tr.addEventListener('click', (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            });
-            let td = createElement('td', {}, tr);
-            let a = createElement(
-              'a',
-              {
-                content: `${index + 1}. ${zone.name}`,
-              },
-              td
-            );
 
-            createElement(
-              'div',
-              {
-                content: `${formatStopDate(stop.activeFrom)}`,
-                classes: ['caption'],
-              },
-              td
-            );
-
-            let pts = zone.points.map(p => [p.y, p.x]);
-            let center = calculateCenter(pts);
-
-            let lat = center[0];
-            let lng = center[1];
-            zonePoints.push({ lat, lng });
-
-            a.setAttribute('href', '#');
-            a.addEventListener('click', async (event) => {
-              event.preventDefault();
-              let location = await createSygicTruckNavigateToPointUri(lat, lng);
-              window.open(location, '_system');
-            });
+          } else {
+            tableHolder.innerHTML = '';
           }
-
-        } else {
-          tableHolder.innerHTML = '';
+          tableHolder.classList.toggle('hidden');
+        } finally {
+          // Quitar spinner y desbloquear pantalla
+          overlay.remove();
         }
-        tableHolder.classList.toggle('hidden');
       });
     });
 
