@@ -1,5 +1,5 @@
 import _ from 'underscore';
-import {PolyUtil} from 'node-geometry-library';
+import { PolyUtil } from 'node-geometry-library';
 import {
   User,
   ApiWrapper,
@@ -220,14 +220,14 @@ geotab.addin.sygic = function (api, state) {
       value: viewModel.hazmat.value[key].value,
       key: key,
       label: viewModel.hazmat.value[key].label,
-      visible:  viewModel.hazmat.value[key].visible,
-      options:  viewModel.hazmat.value[key].options,
+      visible: viewModel.hazmat.value[key].visible,
+      options: viewModel.hazmat.value[key].options,
     }));
 
     document.getElementById('sygic-dimensions-summary-content').innerHTML =
-      summaryTemplate({dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject});
+      summaryTemplate({ dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject });
     document.getElementById('sygic-dimensions-form-content').innerHTML =
-      formTemplate({dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject});
+      formTemplate({ dimensions: summaryDimensionsTemplateObject, hazmats: hazmatTemplateObject });
   }
 
   function toggleDimensionsBox() {
@@ -282,7 +282,7 @@ geotab.addin.sygic = function (api, state) {
   }
 
   async function loadDevice(deviceId) {
-    if (deviceId){
+    if (deviceId) {
       let devices = await geotabApi.callAsync('Get', {
         typeName: 'Device',
         search: {
@@ -292,7 +292,7 @@ geotab.addin.sygic = function (api, state) {
 
       if (devices.length > 0) {
         let device = devices[0];
-        if (device.id){
+        if (device.id) {
           elAddin.querySelector('#sygic-vehicle').textContent = device.name;
           show(document.getElementById('sygic-dimensions-summary'));
           hide(document.getElementById('sygic-no-vehicle-warning'));
@@ -337,13 +337,20 @@ geotab.addin.sygic = function (api, state) {
       return [cx, cy];
     }
 
+    // Fecha de hoy a las 00:00:00
     let today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Fecha de mañana a las 00:00:00 (límite superior)
+    let tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     let myRoutes = await geotabApi.callAsync('Get', {
       typeName: 'Route',
       search: {
         routeType: 'Plan',
         fromDate: today.toISOString(),
+        toDate: tomorrow.toISOString(),
         deviceSearch: {
           id: deviceId,
         },
@@ -355,11 +362,25 @@ geotab.addin.sygic = function (api, state) {
 
     myRoutes.forEach((route) => {
 
-      //TODO: Route-Plan search not respecting fromDate parameter!
+      // Filtro manual para asegurar que solo se muestren rutas de hoy
       if (route.startTime) {
-        var routeStartTime = new Date(route.startTime);
-        if (routeStartTime < today)
-          return;
+        let routeStartTime = new Date(route.startTime);
+
+        // Verificar que la ruta empieza HOY (no antes ni después)
+        if (routeStartTime < today || routeStartTime >= tomorrow) {
+          return; // Saltar esta ruta
+        }
+      } else {
+        // Si no tiene startTime, verificar por el primer stop
+        let firstStop = route.routePlanItemCollection[0];
+        if (firstStop && firstStop.activeFrom) {
+          let firstStopTime = new Date(firstStop.activeFrom);
+          if (firstStopTime < today || firstStopTime >= tomorrow) {
+            return;
+          }
+        } else {
+          return; // Sin fecha válida, saltar
+        }
       }
 
       let routeListItem = createElement(
@@ -409,8 +430,6 @@ geotab.addin.sygic = function (api, state) {
         },
         container
       )
-
-
 
       routeListItem.addEventListener('click', async (event) => {
         event.preventDefault();
