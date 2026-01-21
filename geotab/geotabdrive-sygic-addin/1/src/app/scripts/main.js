@@ -371,36 +371,27 @@ geotab.addin.sygic = function (api, state) {
     let tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    console.log('=== DEBUG RUTAS ===');
-    console.log('Today:', today.toISOString());
-    console.log('Tomorrow:', tomorrow.toISOString());
-
     let myRoutes = await geotabApi.callAsync('Get', {
       typeName: 'Route',
       search: {
         routeType: 'Plan',
+        fromDate: today.toISOString(),
+        toDate: tomorrow.toISOString(), // Añadir límite superior
         deviceSearch: {
           id: deviceId,
         },
       },
     });
 
-    console.log('Total rutas obtenidas:', myRoutes.length);
-    console.log('Rutas:', myRoutes);
-
     let tripsContainer = elAddin ? elAddin.querySelector('#sygic-my-trips') : null;
     if (!tripsContainer) {
-      console.log('ERROR: No se encontró #sygic-my-trips');
       return;
     }
     tripsContainer.innerHTML = '';
 
     myRoutes.forEach((route, index) => {
-      console.log('--- Ruta ' + (index + 1) + ': ' + route.name + ' ---');
-      console.log('route.startTime:', route.startTime);
       
       let firstStop = route.routePlanItemCollection[0];
-      console.log('firstStop.activeFrom:', firstStop ? firstStop.activeFrom : null);
 
       // Determinar la fecha de referencia de la ruta
       let routeDate = null;
@@ -411,23 +402,16 @@ geotab.addin.sygic = function (api, state) {
         routeDate = new Date(firstStop.activeFrom);
       }
 
-      console.log('routeDate parseada:', routeDate);
-
       if (!routeDate) {
-        console.log('SALTADA: Sin fecha válida');
         return;
       }
 
       // Verificar si la ruta es de hoy
       let isToday = routeDate >= today && routeDate < tomorrow;
-      console.log('Es de hoy:', isToday);
 
       if (!isToday) {
-        console.log('SALTADA: No es de hoy');
         return;
       }
-
-      console.log('MOSTRADA: Ruta válida para hoy');
 
       let routeListItem = createElement(
         'li',
@@ -556,7 +540,6 @@ geotab.addin.sygic = function (api, state) {
       });
     });
 
-    console.log('=== FIN DEBUG ===');
   }
 
   async function loadDimensions(deviceId, isMetric) {
