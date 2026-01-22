@@ -534,7 +534,7 @@ geotab.addin.sygic = function (api, state) {
         let sygicUri = `${baseUri}${truckSettingsUri}&&&${routeDownloadUri}&&&${backButtonUri}`;
         
         console.log('Sygic URI:', sygicUri);
-        window.open(sygicUri, '_system');
+        window.location.href = sygicUri;
       });
 
       let tableHolder = createElement(
