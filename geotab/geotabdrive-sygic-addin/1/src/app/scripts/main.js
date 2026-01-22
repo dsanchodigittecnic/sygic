@@ -527,12 +527,12 @@ geotab.addin.sygic = function (api, state) {
         const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
         
         let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`);
-        let routeDownloadUri = `route_download|${routeJsonUrl}|json`;
-        let backButtonUri = 'back_button|com.geotab.androidCheckmate';
+        let routeDownloadUri = `route_download%7C${routeJsonUrl}%7Cjson`;
+        let backButtonUri = 'back_button%7Ccom.geotab.androidCheckmate';
+        let truckSettingsEncoded = truckSettingsUri.replace(/\|/g, '%7C');
         
         let baseUri = 'com.sygic.aura://';
-        let uri = `${truckSettingsUri}&&&${routeDownloadUri}&&&${backButtonUri}`;
-        let sygicUri = `${baseUri}${encodeURI(uri)}`;
+        let sygicUri = `${baseUri}${truckSettingsEncoded}&&&${routeDownloadUri}&&&${backButtonUri}`;
         
         console.log('Sygic URI:', sygicUri);
         
