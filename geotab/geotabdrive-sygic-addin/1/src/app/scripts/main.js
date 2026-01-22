@@ -18,7 +18,7 @@ geotab.addin.sygic = function (api, state) {
   let cachedUser = null;
 
   // URL base para descargar rutas en Sygic (modificar si cambia)
-  const SYGIC_ROUTES_BASE_URL = 'https://dsanchodigittecnic.github.io/sygic/routes/';
+  const SYGIC_ROUTES_BASE_URL = 'https://dsanchodigittecnic.github.io/sygic/';
 
   let geotabApi = ApiWrapper(api);
 
@@ -526,7 +526,7 @@ geotab.addin.sygic = function (api, state) {
         const dimensions = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
         const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
         
-        let routeJsonUrl = `${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`;
+        let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`);
         let routeDownloadUri = `route_download|${routeJsonUrl}|json`;
         let backButtonUri = 'back_button|com.geotab.androidCheckmate';
         
