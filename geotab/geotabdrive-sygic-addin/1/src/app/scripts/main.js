@@ -526,15 +526,23 @@ geotab.addin.sygic = function (api, state) {
         const dimensions = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
         const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
         
-        let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`);
+        let routeJsonUrl = `${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`;
         let routeDownloadUri = `route_download|${routeJsonUrl}|json`;
         let backButtonUri = 'back_button|com.geotab.androidCheckmate';
         
         let baseUri = 'com.sygic.aura://';
-        let sygicUri = `${baseUri}${truckSettingsUri}&&&${routeDownloadUri}&&&${backButtonUri}`;
+        let uri = `${truckSettingsUri}&&&${routeDownloadUri}&&&${backButtonUri}`;
+        let sygicUri = `${baseUri}${encodeURI(uri)}`;
         
         console.log('Sygic URI:', sygicUri);
-        window.location.href = sygicUri;
+        
+        // Crear enlace temporal y hacer clic
+        let a = document.createElement('a');
+        a.href = sygicUri;
+        a.target = '_system';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       });
 
       let tableHolder = createElement(
