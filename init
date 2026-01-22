@@ -1,3 +1,12 @@
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 cd .\geotabdrive-sygic-addin\1\
 npm run build
+
+npm link ../sygic-geotab-utils 
+
+
+
+
+https://dsanchodigittecnic.github.io/sygic/geotab/mygeotab-sygic-page/dist/mygeotabSygicPage.html
+
+https://cdn.jsdelivr.net/gh/sygic/geotab@master/mygeotab-sygic-page/dist/mygeotabSygicPage.html

@@ -16,6 +16,15 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   // the root container
   var elAddin = document.getElementById('mygeotabSygicPage');
+  
+  // Configuración de lazy loading
+  const ITEMS_PER_PAGE = 20;
+  let currentPage = 0;
+  let isLoading = false;
+  let allDataLoaded = false;
+  let cachedData = null;
+  let observer = null;
+
   let templateString = `
   <li class='<%= user.canView ? '' : ' hidden' %>'>
   <div class='g-col checkmateListBuilderRow sygic-vehicle' style='padding-left: 0px'>
@@ -93,6 +102,21 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 </li>
   `;
 
+  // Template para el indicador de carga
+  const loadingTemplate = `
+    <li id="sygic-loading-indicator" class="sygic-loading">
+      <div style="text-align: center; padding: 20px;">
+        <div class="sygic-spinner"></div>
+        <span>Loading more vehicles...</span>
+      </div>
+    </li>
+  `;
+
+  // Template para el sentinel (elemento observado para infinite scroll)
+  const sentinelTemplate = `
+    <li id="sygic-scroll-sentinel" style="height: 1px;"></li>
+  `;
+
   let geotabApi = ApiWrapper(api);
 
   function getDimensionsString(viewModel) {
@@ -114,101 +138,225 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     return dimensionDetailsString;
   }
 
-  function renderDeviceList({ devices, dimensions, user }) {
-    let vehicleList = document.getElementById('sygic-vehicle-list');
-    let storage = new DimensionsStorage(geotabApi);
-
-    vehicleList.innerHTML = '';
-
-    let template = _.template(templateString);
-
-    for (let index = 0; index < devices.length; index++) {
-      const device = devices[index];
-      let dimensionDetailsString = '';
-
-      let viewModel = undefined;
-      if (dimensions[device.id]) {
-        viewModel = dimensions[device.id].getViewModelWithUnits(user.isMetric, state);
-        dimensionDetailsString = getDimensionsString(viewModel);
-      } else {
-        viewModel = DimensionsModel.getEmptyViewModel(user.isMetric, state);
-        dimensionDetailsString = 'Dimensions unset';
-      }
-
-      let dimensionsTemplateObject = Object.keys(viewModel).map(key => {
-        if (key !== 'hazmat') {
-          return {
-            value: viewModel[key].value,
-            key: key,
-            label: viewModel[key].label,
-            options: viewModel[key].options,
-          };
-        }
-        return null;
-      }).filter(Boolean);
-
-      let hazmatTemplateObject = Object.keys(viewModel.hazmat.value).map(key => ({
-          value: viewModel.hazmat.value[key].value,
-          key: key,
-          label: viewModel.hazmat.value[key].label,
-          visible:  viewModel.hazmat.value[key].visible,
-          options:  viewModel.hazmat.value[key].options,
-      }));
-
-      let vehicle_groups_string = device.groups.map((c) => c.name).join(', ');
-      let result = template({
-        vehicle: device,
-        vehicle_dimensions_string: dimensionDetailsString,
-        vehicle_groups_string: vehicle_groups_string,
-        vehicle_dimensions: dimensionsTemplateObject,
-        vehicle_hazmat: hazmatTemplateObject,
-        user: user,
-        apply_changes: state.translate('Apply Changes'),
-      });
-      vehicleList.innerHTML += result;
+  function createVehicleElement(device, dimensions, user) {
+    let dimensionDetailsString = '';
+    let viewModel = undefined;
+    
+    if (dimensions[device.id]) {
+      viewModel = dimensions[device.id].getViewModelWithUnits(user.isMetric, state);
+      dimensionDetailsString = getDimensionsString(viewModel);
+    } else {
+      viewModel = DimensionsModel.getEmptyViewModel(user.isMetric, state);
+      dimensionDetailsString = 'Dimensions unset';
     }
 
-    let vehicleRows = document.querySelectorAll('.sygic-vehicle');
-    vehicleRows.forEach((row) => {
-      let deviceId = row.getElementsByClassName('sygic-vehicle-id')[0].value;
-      let editAnchor = row.getElementsByClassName('sygic-edit-dimensions')[0];
-      let form = row.getElementsByClassName('sygic-vehicle-dimensions-form')[0];
-      let comment = row.getElementsByClassName('vehicle-dimensions-comment')[0];
-      editAnchor.addEventListener('click', (event) => {
-        event.preventDefault();
-        comment.classList.toggle('hidden');
-        form.classList.toggle('hidden');
+    let dimensionsTemplateObject = Object.keys(viewModel).map(key => {
+      if (key !== 'hazmat') {
+        return {
+          value: viewModel[key].value,
+          key: key,
+          label: viewModel[key].label,
+          options: viewModel[key].options,
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    let hazmatTemplateObject = Object.keys(viewModel.hazmat.value).map(key => ({
+      value: viewModel.hazmat.value[key].value,
+      key: key,
+      label: viewModel.hazmat.value[key].label,
+      visible: viewModel.hazmat.value[key].visible,
+      options: viewModel.hazmat.value[key].options,
+    }));
+
+    let vehicle_groups_string = device.groups.map((c) => c.name).join(', ');
+    let template = _.template(templateString);
+    
+    return template({
+      vehicle: device,
+      vehicle_dimensions_string: dimensionDetailsString,
+      vehicle_groups_string: vehicle_groups_string,
+      vehicle_dimensions: dimensionsTemplateObject,
+      vehicle_hazmat: hazmatTemplateObject,
+      user: user,
+      apply_changes: state.translate('Apply Changes'),
+    });
+  }
+
+  function attachEventListeners(row, storage, user) {
+    let deviceId = row.getElementsByClassName('sygic-vehicle-id')[0].value;
+    let editAnchor = row.getElementsByClassName('sygic-edit-dimensions')[0];
+    let form = row.getElementsByClassName('sygic-vehicle-dimensions-form')[0];
+    let comment = row.getElementsByClassName('vehicle-dimensions-comment')[0];
+    
+    editAnchor.addEventListener('click', (event) => {
+      event.preventDefault();
+      comment.classList.toggle('hidden');
+      form.classList.toggle('hidden');
+    });
+
+    let fieldSet = row.getElementsByClassName('sygic-vehicle-dimensions-fieldset')[0];
+    let submitButton = row.getElementsByClassName('sygic-vehicle-dimensions-save')[0];
+    
+    submitButton.addEventListener('click', async (event) => {
+      let dimensionsInputs = Dimensions.getInputValues(fieldSet);
+      const dimensionsModel = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
+      let storedDimensions = await storage.getDimensionsModelAsync(deviceId);
+      
+      if (!storedDimensions) {
+        await storage.addDimensionsAsync(dimensionsModel, deviceId);
+      } else {
+        try {
+          await storage.setDimensionsAsync(
+            dimensionsModel,
+            storedDimensions.id,
+            deviceId
+          );
+        } catch (e) {
+          // nothing here. It just fails for no reason.
+        }
+      }
+      comment.classList.toggle('hidden');
+      form.classList.toggle('hidden');
+      const model = dimensionsModel.getViewModelWithUnits(user.isMetric, state);
+      comment.innerHTML = getDimensionsString(model);
+    });
+  }
+
+  function showLoading() {
+    const vehicleList = document.getElementById('sygic-vehicle-list');
+    const existingLoader = document.getElementById('sygic-loading-indicator');
+    if (!existingLoader) {
+      const sentinel = document.getElementById('sygic-scroll-sentinel');
+      if (sentinel) {
+        sentinel.insertAdjacentHTML('beforebegin', loadingTemplate);
+      }
+    }
+  }
+
+  function hideLoading() {
+    const loader = document.getElementById('sygic-loading-indicator');
+    if (loader) {
+      loader.remove();
+    }
+  }
+
+  function loadMoreItems() {
+    if (isLoading || allDataLoaded || !cachedData) return;
+
+    isLoading = true;
+    showLoading();
+
+    // Simular un pequeño delay para UX más suave
+    setTimeout(() => {
+      const { devices, dimensions, user } = cachedData;
+      const storage = new DimensionsStorage(geotabApi);
+      const vehicleList = document.getElementById('sygic-vehicle-list');
+      const sentinel = document.getElementById('sygic-scroll-sentinel');
+
+      const startIndex = currentPage * ITEMS_PER_PAGE;
+      const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, devices.length);
+      const itemsToRender = devices.slice(startIndex, endIndex);
+
+      if (itemsToRender.length === 0) {
+        allDataLoaded = true;
+        hideLoading();
+        if (sentinel) sentinel.remove();
+        isLoading = false;
+        return;
+      }
+
+      // Crear un fragment para mejor rendimiento
+      const fragment = document.createDocumentFragment();
+      const tempContainer = document.createElement('div');
+
+      itemsToRender.forEach(device => {
+        const html = createVehicleElement(device, dimensions, user);
+        tempContainer.innerHTML = html;
+        const li = tempContainer.firstElementChild;
+        fragment.appendChild(li);
       });
 
-      let fieldSet = row.getElementsByClassName(
-        'sygic-vehicle-dimensions-fieldset'
-      )[0];
-      let sumbitButton = row.getElementsByClassName(
-        'sygic-vehicle-dimensions-save'
-      )[0];
-      sumbitButton.addEventListener('click', async (event) => {
-        let dimensionsInputs = Dimensions.getInputValues(fieldSet);
-        const dimensionsModel = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
-        let storedDimensions = await storage.getDimensionsModelAsync(deviceId);
-        if (!storedDimensions) {
-          await storage.addDimensionsAsync(dimensionsModel, deviceId);
-        } else {
-          try {
-            await storage.setDimensionsAsync(
-              dimensionsModel,
-              storedDimensions.id,
-              deviceId
-            );
-          } catch (e) {
-            //nothing here. It just fails for no reason.
-          }
+      // Insertar antes del sentinel
+      if (sentinel) {
+        vehicleList.insertBefore(fragment, sentinel);
+      } else {
+        vehicleList.appendChild(fragment);
+      }
+
+      // Attach event listeners a los nuevos elementos
+      const allRows = vehicleList.querySelectorAll('.sygic-vehicle');
+      const newRows = Array.from(allRows).slice(startIndex, endIndex);
+      newRows.forEach(row => attachEventListeners(row, storage, user));
+
+      currentPage++;
+      hideLoading();
+      isLoading = false;
+
+      // Verificar si hemos cargado todo
+      if (endIndex >= devices.length) {
+        allDataLoaded = true;
+        if (sentinel) sentinel.remove();
+      }
+    }, 100);
+  }
+
+  function setupIntersectionObserver() {
+    // Limpiar observer anterior si existe
+    if (observer) {
+      observer.disconnect();
+    }
+
+    const sentinel = document.getElementById('sygic-scroll-sentinel');
+    if (!sentinel) return;
+
+    const options = {
+      root: null, // viewport
+      rootMargin: '100px', // cargar un poco antes de llegar al final
+      threshold: 0
+    };
+
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !isLoading && !allDataLoaded) {
+          loadMoreItems();
         }
-        comment.classList.toggle('hidden');
-        form.classList.toggle('hidden');
-        const model = dimensionsModel.getViewModelWithUnits(user.isMetric, state);
-        comment.innerHTML = getDimensionsString(model);
       });
-    });
+    }, options);
+
+    observer.observe(sentinel);
+  }
+
+  function renderDeviceList({ devices, dimensions, user }) {
+    // Reset estado
+    currentPage = 0;
+    isLoading = false;
+    allDataLoaded = false;
+    cachedData = { devices, dimensions, user };
+
+    let vehicleList = document.getElementById('sygic-vehicle-list');
+    vehicleList.innerHTML = '';
+
+    // Mostrar contador total
+    const header = document.querySelector('.geotabPageHeader');
+    let counter = document.getElementById('sygic-vehicle-counter');
+    if (!counter) {
+      counter = document.createElement('span');
+      counter.id = 'sygic-vehicle-counter';
+      counter.style.cssText = 'font-size: 14px; color: #666; margin-left: 10px;';
+      header.querySelector('h1').appendChild(counter);
+    }
+    counter.textContent = ` (${devices.length} vehicles)`;
+
+    // Agregar el sentinel para infinite scroll
+    vehicleList.innerHTML = sentinelTemplate;
+
+    // Cargar primera página
+    loadMoreItems();
+
+    // Configurar el observer
+    setupIntersectionObserver();
   }
 
   async function prepareData() {
@@ -258,68 +406,63 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     });
 
     let user = new User(geotabUser[0], geotabClearances);
-    // user.isMetric = false;
     return { devices, dimensions, user };
   }
 
+  // Agregar estilos para el spinner
+  function addStyles() {
+    if (document.getElementById('sygic-lazy-load-styles')) return;
+    
+    const styles = document.createElement('style');
+    styles.id = 'sygic-lazy-load-styles';
+    styles.textContent = `
+      .sygic-loading {
+        list-style: none;
+      }
+      .sygic-spinner {
+        width: 30px;
+        height: 30px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        animation: sygic-spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+      @keyframes sygic-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(styles);
+  }
+
   return {
-    /**
-     * initialize() is called only once when the Add-In is first loaded. Use this function to initialize the
-     * Add-In's state such as default values or make API requests (MyGeotab or external) to ensure interface
-     * is ready for the user.
-     * @param {object} freshApi - The GeotabApi object for making calls to MyGeotab.
-     * @param {object} freshState - The page state object allows access to URL, page navigation and global group filter.
-     * @param {function} initializeCallback - Call this when your initialize route is complete. Since your initialize routine
-     *        might be doing asynchronous operations, you must call this method when the Add-In is ready
-     *        for display to the user.
-     */
     initialize: async function (freshApi, freshState, initializeCallback) {
-      // Loading translations if available
       if (freshState.translate) {
         freshState.translate(elAddin || '');
       }
-      // MUST call initializeCallback when done any setup
+      addStyles();
       initializeCallback();
     },
 
-    /**
-     * focus() is called whenever the Add-In receives focus.
-     *
-     * The first time the user clicks on the Add-In menu, initialize() will be called and when completed, focus().
-     * focus() will be called again when the Add-In is revisited. Note that focus() will also be called whenever
-     * the global state of the MyGeotab application changes, for example, if the user changes the global group
-     * filter in the UI.
-     *
-     * @param {object} freshApi - The GeotabApi object for making calls to MyGeotab.
-     * @param {object} freshState - The page state object allows access to URL, page navigation and global group filter.
-     */
     focus: async function (freshApi, freshState) {
       elAddin.className = '';
-      // show main content
-
-      // await geotabApi.callAsync('Remove', {
-      //   typeName: 'AddInData',
-      //   entity: {
-      //     addInId: 'ajk3ZmUzNmQtYjNlYS0yMGI',
-      //     id: 'a0gr0GfY9YkOxnAb7N16fKA',
-      //   }
-      // })
-
       let data = await prepareData();
       renderDeviceList(data);
     },
 
-    /**
-     * blur() is called whenever the user navigates away from the Add-In.
-     *
-     * Use this function to save the page state or commit changes to a data store or release memory.
-     *
-     * @param {object} freshApi - The GeotabApi object for making calls to MyGeotab.
-     * @param {object} freshState - The page state object allows access to URL, page navigation and global group filter.
-     */
     blur: function () {
-      // hide main content
       elAddin.className += ' hidden';
+      // Limpiar observer al salir
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+      // Reset estado
+      currentPage = 0;
+      isLoading = false;
+      allDataLoaded = false;
+      cachedData = null;
     },
   };
 };
