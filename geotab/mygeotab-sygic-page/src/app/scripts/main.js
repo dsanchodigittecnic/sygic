@@ -97,75 +97,76 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         });
     }
 
-    async function loadNextPage() {
-        if (isLoading) return;
-        isLoading = true;
+    // ... (mismo encabezado y variables que el anterior)
 
-        var list = document.getElementById('sygic-vehicle-list');
-        showLoadingIndicator(true, 'Cargando bloque...');
+async function loadNextPage() {
+    if (isLoading || !hasMoreData) return;
+    isLoading = true;
 
-        try {
-            var devicesToRender = [];
+    var list = document.getElementById('sygic-vehicle-list');
+    showLoadingIndicator(true, 'Cargando vehículos...');
 
-            // ESTRATEGIA: Si tenemos datos en el buffer (porque la API mandó de más), los usamos primero
-            if (deviceBuffer.length > 0) {
-                devicesToRender = deviceBuffer.splice(0, PAGE_SIZE);
-            } else if (hasMoreData) {
-                // Si el buffer está vacío, llamamos a la API
-                var callParams = {
-                    typeName: 'Device',
-                    resultsLimit: PAGE_SIZE, // El servidor suele ignorar esto en búsquedas de grupos
-                    search: { groups: state.getGroupFilter() }
-                };
-
-                var results = await geotabApi.callAsync('Get', callParams);
-                
-                if (!results || results.length === 0) {
-                    hasMoreData = false;
-                } else {
-                    // Si el API nos mandó 1000, guardamos 950 en el buffer y renderizamos solo 50
-                    devicesToRender = results.slice(0, PAGE_SIZE);
-                    if (results.length > PAGE_SIZE) {
-                        deviceBuffer = results.slice(PAGE_SIZE);
-                    }
-                    // Si mandó menos del límite, ya no hay más datos que pedir al servidor
-                    if (results.length < PAGE_SIZE) hasMoreData = false;
-                }
-            }
-
-            if (devicesToRender.length > 0) {
-                // Pedimos dimensiones solo para los 50 que vamos a mostrar ahora
-                var ids = devicesToRender.map(function(d) { return d.id; });
-                var dims = await storage.getDimensionsModelsAsync(ids);
-                Object.assign(allDimensions, dims);
-
-                // Renderizado por micro-lotes para que no se congele el navegador
-                for (var i = 0; i < devicesToRender.length; i += 10) {
-                    var chunk = devicesToRender.slice(i, i + 10);
-                    var html = chunk.map(function(d) { return createDeviceHTML(d); }).join('');
-                    var temp = document.createElement('div');
-                    temp.innerHTML = html;
-                    var fragment = document.createDocumentFragment();
-                    while (temp.firstChild) fragment.appendChild(temp.firstChild);
-                    
-                    var loader = document.getElementById('sygic-loader');
-                    list.insertBefore(fragment, loader);
-                    
-                    // Pausa de 16ms (1 frame) para que la UI respire
-                    await new Promise(function(resolve) { setTimeout(resolve, 16); });
-                }
-
-                totalDevicesLoaded += devicesToRender.length;
-                updateStatus(totalDevicesLoaded);
-            }
-
-        } catch (error) {
-            console.error('[SYGIC] Error:', error);
+    try {
+        // 1. OBTENER SÓLO LOS IDs (Esto es instantáneo incluso para 5,000 vehículos)
+        // Solo lo hacemos la primera vez para saber qué vehículos existen
+        if (totalDevicesLoaded === 0 && deviceBuffer.length === 0) {
+            var allIds = await geotabApi.callAsync('Get', {
+                typeName: 'Device',
+                search: { groups: state.getGroupFilter() },
+                propertySelector: ['id'] // <--- CRÍTICO: Solo pedimos el ID, no todo el objeto
+            });
+            deviceBuffer = allIds || [];
+            console.log('[SYGIC] Total de IDs encontrados:', deviceBuffer.length);
         }
 
-        isLoading = false;
-        showLoadingIndicator(false);
+        // 2. EXTRAER EL SIGUIENTE LOTE DE LA MOCHILA (Buffer)
+        var batchIds = deviceBuffer.splice(0, PAGE_SIZE);
+        
+        if (batchIds.length === 0) {
+            hasMoreData = false;
+        } else {
+            // 3. PEDIR DATOS COMPLETOS SÓLO PARA LOS 50 IDs ACTUALES
+            // Esto garantiza que Geotab solo devuelva 50 objetos completos
+            var devicesToRender = await geotabApi.callAsync('Get', {
+                typeName: 'Device',
+                search: {
+                    id: batchIds.map(function(d) { return d.id; })
+                }
+            });
+
+            // 4. PEDIR DIMENSIONES SÓLO PARA ESTOS 50
+            var dims = await storage.getDimensionsModelsAsync(batchIds.map(function(d) { return d.id; }));
+            Object.assign(allDimensions, dims);
+
+            // 5. RENDERIZADO CONTROLADO (Para no bloquear la UI)
+            for (var i = 0; i < devicesToRender.length; i++) {
+                var device = devicesToRender[i];
+                var html = createDeviceHTML(device);
+                var temp = document.createElement('div');
+                temp.innerHTML = html;
+                
+                var loader = document.getElementById('sygic-loader');
+                list.insertBefore(temp.firstElementChild, loader);
+                
+                // Si el lote es muy grande, pausamos cada 10 para mantener 60fps
+                if (i % 10 === 0) {
+                    await new Promise(function(resolve) { setTimeout(resolve, 1); });
+                }
+            }
+
+            totalDevicesLoaded += devicesToRender.length;
+            updateStatus(totalDevicesLoaded);
+        }
+
+    } catch (error) {
+        console.error('[SYGIC] Error crítico en carga:', error);
     }
+
+    isLoading = false;
+    showLoadingIndicator(false);
+}
+
+// ... (Resto de funciones auxiliares del código anterior)
 
     // --- REESTABLECER EL RESTO DE FUNCIONES (GlobalEvents, Scroll, etc) ---
 
