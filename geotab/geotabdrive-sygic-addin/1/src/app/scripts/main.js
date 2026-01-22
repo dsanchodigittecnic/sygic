@@ -536,13 +536,8 @@ geotab.addin.sygic = function (api, state) {
         
         console.log('Sygic URI:', sygicUri);
         
-        // Crear enlace temporal y hacer clic
-        let a = document.createElement('a');
-        a.href = sygicUri;
-        a.target = '_system';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Abrir Sygic
+        window.open(sygicUri, '_system');
       });
 
       let tableHolder = createElement(
