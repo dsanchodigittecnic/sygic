@@ -7,28 +7,32 @@ import {
   DimensionsModel,
 } from 'sygic-geotab-utils';
 
-/**
- * @returns {{initialize: Function, focus: Function, blur: Function}}
- */
 geotab.addin.mygeotabSygicPage = function (api, state) {
   'use strict';
   const addinDataGuid = 'ajk3ZmUzNmQtYjNlYS0yMGI';
 
-  // the root container
   var elAddin = document.getElementById('mygeotabSygicPage');
   
-  // Configuración de lazy loading
-  const ITEMS_PER_PAGE = 20;
-  let currentPage = 0;
+  // Configuración
+  const ITEMS_PER_PAGE = 30;
+  let currentIndex = 0;
   let isLoading = false;
   let allDataLoaded = false;
-  let cachedData = null;
   let observer = null;
+  
+  // Datos cacheados
+  let allDevices = [];
+  let allDimensions = {};
+  let currentUser = null;
+  let storage = null;
+  let groupMap = {};
 
-  let templateString = `
-  <li class='<%= user.canView ? '' : ' hidden' %>'>
-  <div class='g-col checkmateListBuilderRow sygic-vehicle' style='padding-left: 0px'>
-    <input type='hidden' class='sygic-vehicle-id' value=<%= vehicle.id %>>
+  let geotabApi = ApiWrapper(api);
+
+  // Template más simple para mejor rendimiento
+  const templateString = `
+  <li class='<%= user.canView ? "" : "hidden" %>'>
+  <div class='g-col checkmateListBuilderRow sygic-vehicle' style='padding-left: 0px' data-device-id='<%= vehicle.id %>'>
     <div class='g-row'>
         <div class='g-main g-main-col g-main_wider'>
           <div class='g-name'>
@@ -42,7 +46,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
           </div>
         </div>
       <div class='g-ctrl'>
-        <a href='#' class='geotabButton geotabButton-empty sygic-edit-dimensions<%= user.canModify ? '' : ' hidden' %>'>
+        <a href='#' class='geotabButton geotabButton-empty sygic-edit-dimensions<%= user.canModify ? "" : " hidden" %>'>
           <svg class='svgIcon geotabButtonIcons'><use xlink:href='#geo-pencil-icon'>
             <svg viewBox='0 0 32 32' id='geo-pencil-icon'><path d='M7.79 29.124l1.878-1.915-4.919-4.919-1.915 1.915v2.253h2.703v2.666H7.79zm10.927-19.45q0-.45-.45-.45-.189 0-.339.15L6.551 20.714q-.15.15-.15.375 0 .45.488.45.188 0 .338-.15l11.377-11.34q.113-.15.113-.375zM17.59 5.657l8.711 8.71L8.88 31.828H.17V23.08zm14.306 2.027q0 1.09-.751 1.878l-3.492 3.492-8.711-8.749L22.434.851q.75-.789 1.877-.789 1.09 0 1.915.789l4.919 4.918q.75.827.75 1.915z'></path></svg>
           </use></svg>
@@ -52,45 +56,45 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     <div class='g-row hidden sygic-vehicle-dimensions-form'>
       <fieldset class='geotabFieldset sygic-vehicle-dimensions-fieldset' style='background-color: transparent'>
         <% _.each(vehicle_dimensions, dimension => { %>
-            <%  if (dimension.key != 'hazmat') { %>
-              <%  let name = 'sygic-truck-dimensions-' + dimension.key; %>
+            <%  if (dimension.key != "hazmat") { %>
+              <%  let name = "sygic-truck-dimensions-" + dimension.key; %>
               <%  let value = dimension.value; %>
               <%  let label = dimension.label; %>
               <%  let options = dimension.options; %>
               <% if (options) { %>
                <div class='geotabField'>
-                  <label for=<%= name %>><%= label %></label>
-                  <select name=<%= name %> class='geotabFormEditField' >
+                  <label for='<%= name %>'><%= label %></label>
+                  <select name='<%= name %>' class='geotabFormEditField' >
                     <% _.each(options, (option, key)  => { %>
-                      <option value=<%= key %> <% if (value === key) { %> selected='selected' <% } %>  ><%= option %></option>
+                      <option value='<%= key %>' <% if (value === key) { %> selected='selected' <% } %>  ><%= option %></option>
                     <% }) %>                   
                   </select>
                </div>
               <% } else { %>
                 <div class='geotabField'>
-                  <label for=<%= name %>><%= label %></label>
-                  <input type='number' step=0.1 name=<%= name %> class='geotabFormEditField' value=<%= value %> />
+                  <label for='<%= name %>'><%= label %></label>
+                  <input type='number' step='0.1' name='<%= name %>' class='geotabFormEditField' value='<%= value %>' />
                 </div>
               <% } %>
             <%  } %>
         <% }) %>
         <div data-name='hazmat-fields'>
             <% _.each(vehicle_hazmat, hazmat => { %>
-              <%  let name = 'sygic-truck-hazmat-' + hazmat.key; %>
-              <% if (hazmat.key === 'adr_tunnel') { %>
+              <%  let name = "sygic-truck-hazmat-" + hazmat.key; %>
+              <% if (hazmat.key === "adr_tunnel") { %>
                  <div class='geotabField' <% if (!hazmat.visible) { %> hidden='hidden' <% } %> >
-                  <label for=<%= name %>><%= hazmat.label %></label>
-                  <select name=<%= name %> class='geotabFormEditField' >
+                  <label for='<%= name %>'><%= hazmat.label %></label>
+                  <select name='<%= name %>' class='geotabFormEditField' >
                     <option></option>
                     <% _.each(hazmat.options, option => { %>
-                      <option value=<%= option %> <% if (hazmat.value === option) { %> selected='selected' <% } %>  ><%= option %></option>
+                      <option value='<%= option %>' <% if (hazmat.value === option) { %> selected='selected' <% } %>  ><%= option %></option>
                     <% }) %>                   
                   </select>
                 </div>
               <% } else { %>
                 <div class='geotabField'  <% if (!hazmat.visible) { %> hidden='hidden' <% } %> >
-                  <label for=<%= name %>><%= hazmat.label %></label>
-                  <input type='checkbox' step=0.1 name=<%= name %> class='geotabFormEditField' <% if (hazmat.value) { %> checked <% } %> />
+                  <label for='<%= name %>'><%= hazmat.label %></label>
+                  <input type='checkbox' step='0.1' name='<%= name %>' class='geotabFormEditField' <% if (hazmat.value) { %> checked <% } %> />
                 </div>
               <% } %>
             <% }) %>
@@ -102,67 +106,55 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 </li>
   `;
 
-  // Template para el indicador de carga
-  const loadingTemplate = `
-    <li id="sygic-loading-indicator" class="sygic-loading">
-      <div style="text-align: center; padding: 20px;">
-        <div class="sygic-spinner"></div>
-        <span>Loading more vehicles...</span>
-      </div>
-    </li>
-  `;
+  // Template compilado una sola vez
+  let compiledTemplate = null;
 
-  // Template para el sentinel (elemento observado para infinite scroll)
-  const sentinelTemplate = `
-    <li id="sygic-scroll-sentinel" style="height: 1px;"></li>
-  `;
-
-  let geotabApi = ApiWrapper(api);
+  function getCompiledTemplate() {
+    if (!compiledTemplate) {
+      compiledTemplate = _.template(templateString);
+    }
+    return compiledTemplate;
+  }
 
   function getDimensionsString(viewModel) {
-    let iterator = 0;
-    let dimensionDetailsString = '';
+    let parts = [];
     for (const key in viewModel) {
       if (viewModel.hasOwnProperty(key)) {
         const model = viewModel[key];
         if (typeof model.value === 'number' || typeof model.value === 'string') {
-          if (iterator++ > 0) dimensionDetailsString += ', ';
           if (key === 'routing_type') {
-            dimensionDetailsString += `${model.label}: ${DimensionsModel.getRoutingTypeString(model.value, state)}`;
+            parts.push(`${model.label}: ${DimensionsModel.getRoutingTypeString(model.value, state)}`);
           } else {
-            dimensionDetailsString += `${model.label}: ${model.value}`;
+            parts.push(`${model.label}: ${model.value}`);
           }
         }
       }
     }
-    return dimensionDetailsString;
+    return parts.join(', ');
   }
 
-  function createVehicleElement(device, dimensions, user) {
+  function createVehicleHTML(device) {
     let dimensionDetailsString = '';
-    let viewModel = undefined;
+    let viewModel;
     
-    if (dimensions[device.id]) {
-      viewModel = dimensions[device.id].getViewModelWithUnits(user.isMetric, state);
+    if (allDimensions[device.id]) {
+      viewModel = allDimensions[device.id].getViewModelWithUnits(currentUser.isMetric, state);
       dimensionDetailsString = getDimensionsString(viewModel);
     } else {
-      viewModel = DimensionsModel.getEmptyViewModel(user.isMetric, state);
+      viewModel = DimensionsModel.getEmptyViewModel(currentUser.isMetric, state);
       dimensionDetailsString = 'Dimensions unset';
     }
 
-    let dimensionsTemplateObject = Object.keys(viewModel).map(key => {
-      if (key !== 'hazmat') {
-        return {
-          value: viewModel[key].value,
-          key: key,
-          label: viewModel[key].label,
-          options: viewModel[key].options,
-        };
-      }
-      return null;
-    }).filter(Boolean);
+    const dimensionsTemplateObject = Object.keys(viewModel)
+      .filter(key => key !== 'hazmat')
+      .map(key => ({
+        value: viewModel[key].value,
+        key: key,
+        label: viewModel[key].label,
+        options: viewModel[key].options,
+      }));
 
-    let hazmatTemplateObject = Object.keys(viewModel.hazmat.value).map(key => ({
+    const hazmatTemplateObject = Object.keys(viewModel.hazmat.value).map(key => ({
       value: viewModel.hazmat.value[key].value,
       key: key,
       label: viewModel.hazmat.value[key].label,
@@ -170,270 +162,270 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       options: viewModel.hazmat.value[key].options,
     }));
 
-    let vehicle_groups_string = device.groups.map((c) => c.name).join(', ');
-    let template = _.template(templateString);
+    const vehicle_groups_string = device.groups.map(c => c.name || groupMap[c.id] || c.id).join(', ');
     
-    return template({
+    return getCompiledTemplate()({
       vehicle: device,
       vehicle_dimensions_string: dimensionDetailsString,
       vehicle_groups_string: vehicle_groups_string,
       vehicle_dimensions: dimensionsTemplateObject,
       vehicle_hazmat: hazmatTemplateObject,
-      user: user,
+      user: currentUser,
       apply_changes: state.translate('Apply Changes'),
     });
   }
 
-  function attachEventListeners(row, storage, user) {
-    let deviceId = row.getElementsByClassName('sygic-vehicle-id')[0].value;
-    let editAnchor = row.getElementsByClassName('sygic-edit-dimensions')[0];
-    let form = row.getElementsByClassName('sygic-vehicle-dimensions-form')[0];
-    let comment = row.getElementsByClassName('vehicle-dimensions-comment')[0];
+  function attachEventListenersToRow(row) {
+    const deviceId = row.dataset.deviceId;
+    const editAnchor = row.querySelector('.sygic-edit-dimensions');
+    const form = row.querySelector('.sygic-vehicle-dimensions-form');
+    const comment = row.querySelector('.vehicle-dimensions-comment');
     
-    editAnchor.addEventListener('click', (event) => {
-      event.preventDefault();
-      comment.classList.toggle('hidden');
-      form.classList.toggle('hidden');
-    });
+    if (editAnchor) {
+      editAnchor.onclick = (e) => {
+        e.preventDefault();
+        comment.classList.toggle('hidden');
+        form.classList.toggle('hidden');
+      };
+    }
 
-    let fieldSet = row.getElementsByClassName('sygic-vehicle-dimensions-fieldset')[0];
-    let submitButton = row.getElementsByClassName('sygic-vehicle-dimensions-save')[0];
-    
-    submitButton.addEventListener('click', async (event) => {
-      let dimensionsInputs = Dimensions.getInputValues(fieldSet);
-      const dimensionsModel = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
-      let storedDimensions = await storage.getDimensionsModelAsync(deviceId);
-      
-      if (!storedDimensions) {
-        await storage.addDimensionsAsync(dimensionsModel, deviceId);
-      } else {
-        try {
-          await storage.setDimensionsAsync(
-            dimensionsModel,
-            storedDimensions.id,
-            deviceId
-          );
-        } catch (e) {
-          // nothing here. It just fails for no reason.
+    const submitButton = row.querySelector('.sygic-vehicle-dimensions-save');
+    if (submitButton) {
+      submitButton.onclick = async () => {
+        const fieldSet = row.querySelector('.sygic-vehicle-dimensions-fieldset');
+        const dimensionsInputs = Dimensions.getInputValues(fieldSet);
+        const dimensionsModel = DimensionsModel.getFromStringInputs(dimensionsInputs, currentUser.isMetric);
+        
+        let storedDimensions = await storage.getDimensionsModelAsync(deviceId);
+        
+        if (!storedDimensions) {
+          await storage.addDimensionsAsync(dimensionsModel, deviceId);
+        } else {
+          try {
+            await storage.setDimensionsAsync(dimensionsModel, storedDimensions.id, deviceId);
+          } catch (e) { }
         }
-      }
-      comment.classList.toggle('hidden');
-      form.classList.toggle('hidden');
-      const model = dimensionsModel.getViewModelWithUnits(user.isMetric, state);
-      comment.innerHTML = getDimensionsString(model);
-    });
-  }
-
-  function showLoading() {
-    const vehicleList = document.getElementById('sygic-vehicle-list');
-    const existingLoader = document.getElementById('sygic-loading-indicator');
-    if (!existingLoader) {
-      const sentinel = document.getElementById('sygic-scroll-sentinel');
-      if (sentinel) {
-        sentinel.insertAdjacentHTML('beforebegin', loadingTemplate);
-      }
+        
+        comment.classList.toggle('hidden');
+        form.classList.toggle('hidden');
+        const model = dimensionsModel.getViewModelWithUnits(currentUser.isMetric, state);
+        comment.querySelector('.secondaryData').textContent = getDimensionsString(model);
+        
+        // Actualizar caché
+        allDimensions[deviceId] = dimensionsModel;
+      };
     }
   }
 
-  function hideLoading() {
-    const loader = document.getElementById('sygic-loading-indicator');
-    if (loader) {
+  function showLoading(show) {
+    let loader = document.getElementById('sygic-loading-indicator');
+    if (show) {
+      if (!loader) {
+        const vehicleList = document.getElementById('sygic-vehicle-list');
+        vehicleList.insertAdjacentHTML('beforeend', `
+          <li id="sygic-loading-indicator" style="text-align: center; padding: 20px; list-style: none;">
+            <div class="sygic-spinner"></div>
+            <span>Cargando vehículos...</span>
+          </li>
+        `);
+      }
+    } else if (loader) {
       loader.remove();
     }
   }
 
+  function updateCounter() {
+    let counter = document.getElementById('sygic-vehicle-counter');
+    if (counter) {
+      const loaded = Math.min(currentIndex, allDevices.length);
+      counter.textContent = ` (${loaded} / ${allDevices.length})`;
+    }
+  }
+
   function loadMoreItems() {
-    if (isLoading || allDataLoaded || !cachedData) return;
-
+    if (isLoading || allDataLoaded) return;
+    
     isLoading = true;
-    showLoading();
+    
+    const endIndex = Math.min(currentIndex + ITEMS_PER_PAGE, allDevices.length);
+    const itemsToRender = allDevices.slice(currentIndex, endIndex);
+    
+    if (itemsToRender.length === 0) {
+      allDataLoaded = true;
+      isLoading = false;
+      showLoading(false);
+      return;
+    }
 
-    // Simular un pequeño delay para UX más suave
-    setTimeout(() => {
-      const { devices, dimensions, user } = cachedData;
-      const storage = new DimensionsStorage(geotabApi);
+    // Usar requestAnimationFrame para no bloquear el UI
+    requestAnimationFrame(() => {
       const vehicleList = document.getElementById('sygic-vehicle-list');
-      const sentinel = document.getElementById('sygic-scroll-sentinel');
-
-      const startIndex = currentPage * ITEMS_PER_PAGE;
-      const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, devices.length);
-      const itemsToRender = devices.slice(startIndex, endIndex);
-
-      if (itemsToRender.length === 0) {
-        allDataLoaded = true;
-        hideLoading();
-        if (sentinel) sentinel.remove();
-        isLoading = false;
-        return;
-      }
-
-      // Crear un fragment para mejor rendimiento
       const fragment = document.createDocumentFragment();
-      const tempContainer = document.createElement('div');
-
-      itemsToRender.forEach(device => {
-        const html = createVehicleElement(device, dimensions, user);
-        tempContainer.innerHTML = html;
-        const li = tempContainer.firstElementChild;
+      const tempDiv = document.createElement('div');
+      
+      // Crear HTML en batch
+      const htmlBatch = itemsToRender.map(device => createVehicleHTML(device)).join('');
+      tempDiv.innerHTML = htmlBatch;
+      
+      // Mover elementos al fragment y attachar eventos
+      while (tempDiv.firstElementChild) {
+        const li = tempDiv.firstElementChild;
+        const vehicleRow = li.querySelector('.sygic-vehicle');
+        if (vehicleRow) {
+          attachEventListenersToRow(vehicleRow);
+        }
         fragment.appendChild(li);
-      });
-
-      // Insertar antes del sentinel
-      if (sentinel) {
-        vehicleList.insertBefore(fragment, sentinel);
+      }
+      
+      // Insertar antes del loader
+      const loader = document.getElementById('sygic-loading-indicator');
+      if (loader) {
+        vehicleList.insertBefore(fragment, loader);
       } else {
         vehicleList.appendChild(fragment);
       }
-
-      // Attach event listeners a los nuevos elementos
-      const allRows = vehicleList.querySelectorAll('.sygic-vehicle');
-      const newRows = Array.from(allRows).slice(startIndex, endIndex);
-      newRows.forEach(row => attachEventListeners(row, storage, user));
-
-      currentPage++;
-      hideLoading();
-      isLoading = false;
-
-      // Verificar si hemos cargado todo
-      if (endIndex >= devices.length) {
+      
+      currentIndex = endIndex;
+      updateCounter();
+      
+      if (currentIndex >= allDevices.length) {
         allDataLoaded = true;
-        if (sentinel) sentinel.remove();
+        showLoading(false);
+      }
+      
+      isLoading = false;
+    });
+  }
+
+  function setupScrollListener() {
+    const container = document.querySelector('.checkmateListBuilder') || window;
+    
+    const handleScroll = _.throttle(() => {
+      if (isLoading || allDataLoaded) return;
+      
+      const scrollElement = container === window ? document.documentElement : container;
+      const scrollTop = container === window ? window.scrollY : container.scrollTop;
+      const scrollHeight = scrollElement.scrollHeight;
+      const clientHeight = container === window ? window.innerHeight : container.clientHeight;
+      
+      // Cargar más cuando estemos a 200px del final
+      if (scrollTop + clientHeight >= scrollHeight - 200) {
+        loadMoreItems();
       }
     }, 100);
+    
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Guardar referencia para limpiar
+    elAddin._scrollHandler = handleScroll;
+    elAddin._scrollContainer = container;
   }
 
-  function setupIntersectionObserver() {
-    // Limpiar observer anterior si existe
-    if (observer) {
-      observer.disconnect();
+  function cleanupScrollListener() {
+    if (elAddin._scrollHandler && elAddin._scrollContainer) {
+      elAddin._scrollContainer.removeEventListener('scroll', elAddin._scrollHandler);
+      elAddin._scrollHandler = null;
+      elAddin._scrollContainer = null;
     }
-
-    const sentinel = document.getElementById('sygic-scroll-sentinel');
-    if (!sentinel) return;
-
-    const options = {
-      root: null, // viewport
-      rootMargin: '100px', // cargar un poco antes de llegar al final
-      threshold: 0
-    };
-
-    observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && !isLoading && !allDataLoaded) {
-          loadMoreItems();
-        }
-      });
-    }, options);
-
-    observer.observe(sentinel);
   }
 
-  function renderDeviceList({ devices, dimensions, user }) {
-    // Reset estado
-    currentPage = 0;
-    isLoading = false;
-    allDataLoaded = false;
-    cachedData = { devices, dimensions, user };
+  async function loadInitialData() {
+    showLoading(true);
+    
+    // Cargar todo en paralelo
+    const [devices, groups, dimensionsData, session] = await Promise.all([
+      geotabApi.callAsync('Get', {
+        typeName: 'Device',
+        search: { groups: state.getGroupFilter() },
+      }),
+      geotabApi.callAsync('Get', { typeName: 'Group' }),
+      storage.getAllDimensionsModelsAsync(),
+      geotabApi.getSessionAsync(),
+    ]);
 
-    let vehicleList = document.getElementById('sygic-vehicle-list');
-    vehicleList.innerHTML = '';
-
-    // Mostrar contador total
-    const header = document.querySelector('.geotabPageHeader');
-    let counter = document.getElementById('sygic-vehicle-counter');
-    if (!counter) {
-      counter = document.createElement('span');
-      counter.id = 'sygic-vehicle-counter';
-      counter.style.cssText = 'font-size: 14px; color: #666; margin-left: 10px;';
-      header.querySelector('h1').appendChild(counter);
-    }
-    counter.textContent = ` (${devices.length} vehicles)`;
-
-    // Agregar el sentinel para infinite scroll
-    vehicleList.innerHTML = sentinelTemplate;
-
-    // Cargar primera página
-    loadMoreItems();
-
-    // Configurar el observer
-    setupIntersectionObserver();
-  }
-
-  async function prepareData() {
-    let storage = new DimensionsStorage(geotabApi);
-
-    let devices = await geotabApi.callAsync('Get', {
-      typeName: 'Device',
-      search: {
-        groups: state.getGroupFilter(),
-      },
+    // Crear mapa de grupos
+    groupMap = {};
+    groups.forEach(g => {
+      groupMap[g.id] = g.name || g.id;
     });
 
-    let groups = await geotabApi.callAsync('Get', {
-      typeName: 'Group',
-    });
-
-    let groupMap = Object.assign(
-      {},
-      ...groups.map((group) => {
-        return {
-          [group.id]: group.name ? group.name : group.id,
-        };
-      })
-    );
-
-    devices.map((device) => {
-      device.groups.map((group) => {
+    // Asignar nombres de grupos a dispositivos
+    devices.forEach(device => {
+      device.groups.forEach(group => {
         group.name = groupMap[group.id];
       });
     });
 
-    let dimensions = await storage.getAllDimensionsModelsAsync();
+    allDevices = devices;
+    allDimensions = dimensionsData;
 
-    let session = await geotabApi.getSessionAsync();
-    let geotabUser = await geotabApi.callAsync('Get', {
-      typeName: 'User',
-      search: {
-        name: session.userName,
-      },
-    });
+    // Obtener usuario
+    const [geotabUser, geotabClearances] = await Promise.all([
+      geotabApi.callAsync('Get', {
+        typeName: 'User',
+        search: { name: session.userName },
+      }),
+      geotabApi.callAsync('Get', {
+        typeName: 'Group',
+        search: { id: 'groupSecurityId' },
+      }),
+    ]);
 
-    const geotabClearances = await geotabApi.callAsync('Get', {
-      typeName: 'Group',
-      search: {
-        id: 'groupSecurityId',
-      },
-    });
-
-    let user = new User(geotabUser[0], geotabClearances);
-    return { devices, dimensions, user };
+    currentUser = new User(geotabUser[0], geotabClearances);
   }
 
-  // Agregar estilos para el spinner
-  function addStyles() {
-    if (document.getElementById('sygic-lazy-load-styles')) return;
+  function initializeUI() {
+    const vehicleList = document.getElementById('sygic-vehicle-list');
+    vehicleList.innerHTML = '';
     
-    const styles = document.createElement('style');
-    styles.id = 'sygic-lazy-load-styles';
-    styles.textContent = `
-      .sygic-loading {
-        list-style: none;
-      }
+    // Añadir contador al header
+    const header = document.querySelector('.geotabPageHeader h1');
+    let counter = document.getElementById('sygic-vehicle-counter');
+    if (!counter) {
+      counter = document.createElement('span');
+      counter.id = 'sygic-vehicle-counter';
+      counter.style.cssText = 'font-size: 14px; color: #666; margin-left: 10px; font-weight: normal;';
+      header.appendChild(counter);
+    }
+    counter.textContent = ` (0 / ${allDevices.length})`;
+    
+    // Reset estado
+    currentIndex = 0;
+    isLoading = false;
+    allDataLoaded = false;
+    
+    // Mostrar loading y cargar primeros items
+    showLoading(true);
+    loadMoreItems();
+    
+    // Setup scroll listener
+    setupScrollListener();
+  }
+
+  function addStyles() {
+    if (document.getElementById('sygic-lazy-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'sygic-lazy-styles';
+    style.textContent = `
       .sygic-spinner {
-        width: 30px;
-        height: 30px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #3498db;
+        width: 24px;
+        height: 24px;
+        border: 3px solid #e0e0e0;
+        border-top-color: #1a73e8;
         border-radius: 50%;
-        animation: sygic-spin 1s linear infinite;
-        margin: 0 auto 10px;
+        animation: sygic-spin 0.8s linear infinite;
+        margin: 0 auto 8px;
       }
       @keyframes sygic-spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        to { transform: rotate(360deg); }
+      }
+      #sygic-vehicle-list {
+        padding: 0;
+        margin: 0;
       }
     `;
-    document.head.appendChild(styles);
+    document.head.appendChild(style);
   }
 
   return {
@@ -442,27 +434,46 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         freshState.translate(elAddin || '');
       }
       addStyles();
+      storage = new DimensionsStorage(geotabApi);
       initializeCallback();
     },
 
     focus: async function (freshApi, freshState) {
       elAddin.className = '';
-      let data = await prepareData();
-      renderDeviceList(data);
+      
+      // Mostrar loading inmediatamente
+      const vehicleList = document.getElementById('sygic-vehicle-list');
+      vehicleList.innerHTML = `
+        <li style="text-align: center; padding: 40px; list-style: none;">
+          <div class="sygic-spinner"></div>
+          <span>Cargando datos...</span>
+        </li>
+      `;
+      
+      try {
+        await loadInitialData();
+        initializeUI();
+      } catch (error) {
+        console.error('Error loading data:', error);
+        vehicleList.innerHTML = `
+          <li style="text-align: center; padding: 40px; color: red;">
+            Error cargando datos. Por favor, recarga la página.
+          </li>
+        `;
+      }
     },
 
     blur: function () {
       elAddin.className += ' hidden';
-      // Limpiar observer al salir
-      if (observer) {
-        observer.disconnect();
-        observer = null;
-      }
-      // Reset estado
-      currentPage = 0;
+      cleanupScrollListener();
+      
+      // Reset
+      currentIndex = 0;
       isLoading = false;
       allDataLoaded = false;
-      cachedData = null;
+      allDevices = [];
+      allDimensions = {};
+      currentUser = null;
     },
   };
 };
