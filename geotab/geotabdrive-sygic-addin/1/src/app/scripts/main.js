@@ -526,13 +526,12 @@ geotab.addin.sygic = function (api, state) {
         const dimensions = DimensionsModel.getFromStringInputs(dimensionsInputs, user.isMetric);
         const truckSettingsUri = createSygicTruckAttrUrl(dimensions);
         
-        let routeJsonUrl = `${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`;
+        let routeJsonUrl = encodeURIComponent(`${SYGIC_ROUTES_BASE_URL}${deviceId}/${route.id}.json`);
         let routeDownloadUri = `route_download|${routeJsonUrl}|json`;
         let backButtonUri = 'back_button|com.geotab.androidCheckmate';
         
         let baseUri = 'com.sygic.aura://';
-        let uri = `${truckSettingsUri}&&&${routeDownloadUri}&&&${backButtonUri}`;
-        let sygicUri = `${baseUri}${encodeURI(uri)}`;
+        let sygicUri = `${baseUri}${truckSettingsUri}&&&${routeDownloadUri}&&&${backButtonUri}`;
         
         console.log('Sygic URI:', sygicUri);
         window.open(sygicUri, '_system');
