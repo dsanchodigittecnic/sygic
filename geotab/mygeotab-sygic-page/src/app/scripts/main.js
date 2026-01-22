@@ -13,7 +13,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   var elAddin = document.getElementById('mygeotabSygicPage');
   
   // Configuración de paginación
-  var PAGE_SIZE = 50;
+  var PAGE_SIZE = 10;
   var isLoading = false;
   var hasMoreData = true;
   var lastDeviceId = null;
