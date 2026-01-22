@@ -13,7 +13,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   var elAddin = document.getElementById('mygeotabSygicPage');
   
   // Configuración de paginación
-  var PAGE_SIZE = 10;
+  var PAGE_SIZE = 50;
   var isLoading = false;
   var hasMoreData = true;
   var lastDeviceId = null;
@@ -203,7 +203,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
           form.classList.add('hidden');
           comment.classList.remove('hidden');
         } catch (e) {
-          console.error('Error saving:', e);
+          console.error('[SYGIC] Error saving:', e);
         }
 
         saveBtn.disabled = false;
@@ -262,24 +262,43 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       };
     }
 
+    console.log('[SYGIC] ========================================');
+    console.log('[SYGIC] Fetching devices page...');
+    console.log('[SYGIC] PAGE_SIZE:', PAGE_SIZE);
+    console.log('[SYGIC] lastDeviceId (offset):', lastDeviceId);
+    console.log('[SYGIC] Call params:', JSON.stringify(callParams, null, 2));
+
     var results = await geotabApi.callAsync('Get', callParams);
+    
+    console.log('[SYGIC] Results received:', results ? results.length : 0, 'devices');
+    if (results && results.length > 0) {
+      console.log('[SYGIC] First device ID:', results[0].id);
+      console.log('[SYGIC] Last device ID:', results[results.length - 1].id);
+    }
+    console.log('[SYGIC] ========================================');
+
     return results || [];
   }
 
   async function loadNextPage() {
     if (isLoading || !hasMoreData) {
+      console.log('[SYGIC] Skipping load - isLoading:', isLoading, 'hasMoreData:', hasMoreData);
       return;
     }
 
     isLoading = true;
     var fromNum = totalDevicesLoaded + 1;
     var toNum = totalDevicesLoaded + PAGE_SIZE;
+    console.log('[SYGIC] Loading page - devices', fromNum, 'to', toNum);
     showLoadingIndicator(true, 'Loading vehicles ' + fromNum + ' - ' + toNum + '...');
 
     try {
       var devices = await fetchDevicesPage();
 
+      console.log('[SYGIC] Devices returned from API:', devices.length);
+
       if (devices.length === 0) {
+        console.log('[SYGIC] No more devices, stopping pagination');
         hasMoreData = false;
         showLoadingIndicator(false);
         isLoading = false;
@@ -287,10 +306,13 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       }
 
       // Guardar el último ID para la siguiente página
+      var previousLastId = lastDeviceId;
       lastDeviceId = devices[devices.length - 1].id;
+      console.log('[SYGIC] Updated lastDeviceId from', previousLastId, 'to', lastDeviceId);
 
       // Si devuelve menos que PAGE_SIZE, no hay más
       if (devices.length < PAGE_SIZE) {
+        console.log('[SYGIC] Received less than PAGE_SIZE, no more data');
         hasMoreData = false;
       }
 
@@ -324,6 +346,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       }
 
       totalDevicesLoaded += devices.length;
+      console.log('[SYGIC] Total devices loaded so far:', totalDevicesLoaded);
       updateStatus(totalDevicesLoaded);
 
       if (!hasMoreData) {
@@ -331,7 +354,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       }
 
     } catch (error) {
-      console.error('Error loading devices:', error);
+      console.error('[SYGIC] Error loading devices:', error);
       showLoadingIndicator(false);
     }
 
@@ -341,6 +364,8 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   function setupInfiniteScroll() {
     var container = document.querySelector('.checkmateListBuilder');
     var scrollTarget = container || window;
+
+    console.log('[SYGIC] Setting up infinite scroll on:', container ? 'container' : 'window');
 
     var onScroll = _.throttle(function() {
       if (isLoading || !hasMoreData) {
@@ -359,7 +384,10 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         clientHeight = container.clientHeight;
       }
 
-      if (scrollTop + clientHeight >= scrollHeight - 300) {
+      var distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      
+      if (distanceFromBottom < 300) {
+        console.log('[SYGIC] Scroll triggered load - distance from bottom:', distanceFromBottom);
         loadNextPage();
       }
     }, 150);
@@ -371,6 +399,8 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   }
 
   async function loadStaticData() {
+    console.log('[SYGIC] Loading static data (groups, dimensions, user)...');
+    
     var results = await Promise.all([
       geotabApi.callAsync('Get', { typeName: 'Group' }),
       storage.getAllDimensionsModelsAsync(),
@@ -380,6 +410,9 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     var groups = results[0];
     var dimensions = results[1];
     var session = results[2];
+
+    console.log('[SYGIC] Groups loaded:', groups.length);
+    console.log('[SYGIC] Dimensions loaded:', Object.keys(dimensions || {}).length);
 
     groupMap = {};
     groups.forEach(function(g) {
@@ -394,6 +427,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     ]);
 
     currentUser = new User(userResults[0][0], userResults[1]);
+    console.log('[SYGIC] User loaded:', session.userName);
   }
 
   function initUI() {
@@ -415,6 +449,8 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     totalDevicesLoaded = 0;
     hasMoreData = true;
     isLoading = false;
+    
+    console.log('[SYGIC] UI initialized, pagination state reset');
   }
 
   function addStyles() {
@@ -433,6 +469,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   return {
     initialize: async function(freshApi, freshState, initializeCallback) {
+      console.log('[SYGIC] ============ INITIALIZING ============');
       if (freshState.translate) {
         freshState.translate(elAddin || '');
       }
@@ -442,6 +479,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     },
 
     focus: async function() {
+      console.log('[SYGIC] ============ FOCUS ============');
       elAddin.className = '';
 
       var list = document.getElementById('sygic-vehicle-list');
@@ -454,12 +492,13 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         setupInfiniteScroll();
         await loadNextPage();
       } catch (error) {
-        console.error('Init error:', error);
+        console.error('[SYGIC] Init error:', error);
         list.innerHTML = '<li style="color:red;padding:20px;">Error loading. Please refresh.</li>';
       }
     },
 
     blur: function() {
+      console.log('[SYGIC] ============ BLUR ============');
       elAddin.className += ' hidden';
       if (elAddin._scrollCleanup) {
         elAddin._scrollCleanup();
