@@ -232,7 +232,7 @@ function main() {
         'username' => 'dsancho@digittecnic.com',
         'password' => 'Catalunya4**',
         'server'   => 'my.geotab.com',
-        'output_dir' => './routes',
+        'output_dir' => './geotab_routes_' . date('Y-m-d'),
         'utm_zone' => 30  // Zona UTM para España (30 o 31). null = auto-detectar
     ];
     
@@ -315,7 +315,7 @@ function main() {
             }
         }
         
-        // 6. Crear directorio principal
+        // 6. Crear directorio
         if (!is_dir($config['output_dir'])) {
             mkdir($config['output_dir'], 0755, true);
         }
@@ -327,18 +327,18 @@ function main() {
             $device = $deviceIndex[$deviceId] ?? null;
             $deviceName = $device['name'] ?? $deviceId;
             
-            // Usar ID del dispositivo como nombre de carpeta
-            $deviceFolder = $config['output_dir'] . '/' . $deviceId;
+            $folderName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $deviceName);
+            $deviceFolder = $config['output_dir'] . '/' . $folderName;
             
             if (!is_dir($deviceFolder)) {
                 mkdir($deviceFolder, 0755, true);
             }
             
-            echo "📂 {$deviceId} ({$deviceName})\n";
+            echo "📂 {$deviceName}\n";
             
-            foreach ($deviceRoutes as $route) {
-                $routeId = $route['id'] ?? 'unknown';
-                $routeName = $route['name'] ?? $routeId;
+            foreach ($deviceRoutes as $index => $route) {
+                $routeName = $route['name'] ?? "route_$index";
+                $routeFileName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $routeName);
                 
                 // Extraer waypoints
                 $waypoints = [];
@@ -381,16 +381,44 @@ function main() {
                 // Generar JSON en formato polygon/stations
                 $polygonData = generateRoutePolygonJSON($waypoints, $config['utm_zone']);
                 
-                // Guardar JSON polygon con ID de la ruta como nombre
-                $polygonFile = $deviceFolder . '/' . $routeId . '.json';
+                // Guardar JSON polygon
+                $polygonFile = $deviceFolder . '/' . $routeFileName . '_polygon.json';
                 file_put_contents(
                     $polygonFile,
                     json_encode($polygonData, JSON_PRETTY_PRINT)
                 );
                 
-                echo "   └── {$routeId}.json ({$routeName})\n";
+                // También guardar JSON completo con info adicional
+                $fullData = [
+                    'routeInfo' => [
+                        'id' => $route['id'],
+                        'name' => $routeName,
+                        'startTime' => $route['startTime'] ?? null,
+                        'endTime' => $route['endTime'] ?? null,
+                        'device' => $deviceName
+                    ],
+                    'polygon' => $polygonData['polygon'],
+                    'stations' => $polygonData['stations'],
+                    'waypointDetails' => array_map(function($wp, $idx) {
+                        return [
+                            'polyIdx' => $idx,
+                            'zoneName' => $wp['zone']['name'],
+                            'latLon' => $wp['zone']['centerPoint']
+                        ];
+                    }, $waypoints, array_keys($waypoints)),
+                    '_metadata' => $polygonData['_metadata']
+                ];
+                
+                $fullFile = $deviceFolder . '/' . $routeFileName . '_full.json';
+                file_put_contents(
+                    $fullFile,
+                    json_encode($fullData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+                );
+                
+                echo "   └── {$routeName}\n";
                 echo "       - Puntos: " . count($polygonData['stations']) . "\n";
                 echo "       - Zona UTM: " . ($polygonData['_metadata']['utmZone'] ?? 'N/A') . "\n";
+                echo "       - Archivos: {$routeFileName}_polygon.json, {$routeFileName}_full.json\n";
                 
                 // Mostrar puntos
                 foreach ($polygonData['polygon']['lineString']['points'] as $idx => $point) {
@@ -409,11 +437,11 @@ function main() {
             $noDeviceFolder = $config['output_dir'] . '/_sin_dispositivo';
             mkdir($noDeviceFolder, 0755, true);
             
-            echo "📂 _sin_dispositivo (Routes sin dispositivo asignado)\n";
+            echo "📂 Routes sin dispositivo\n";
             
-            foreach ($routesWithoutDevice as $route) {
-                $routeId = $route['id'] ?? 'unknown';
-                $routeName = $route['name'] ?? $routeId;
+            foreach ($routesWithoutDevice as $index => $route) {
+                $routeName = $route['name'] ?? "route_$index";
+                $routeFileName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $routeName);
                 
                 $waypoints = [];
                 foreach ($route['routePlanItemCollection'] ?? [] as $planItem) {
@@ -448,13 +476,12 @@ function main() {
                 
                 $polygonData = generateRoutePolygonJSON($waypoints, $config['utm_zone']);
                 
-                // Guardar con ID de la ruta como nombre
                 file_put_contents(
-                    $noDeviceFolder . '/' . $routeId . '.json',
+                    $noDeviceFolder . '/' . $routeFileName . '_polygon.json',
                     json_encode($polygonData, JSON_PRETTY_PRINT)
                 );
                 
-                echo "   └── {$routeId}.json ({$routeName}) - {$polygonData['_metadata']['pointCount']} puntos\n";
+                echo "   └── {$routeName} ({$polygonData['_metadata']['pointCount']} puntos)\n";
             }
             echo "\n";
         }
