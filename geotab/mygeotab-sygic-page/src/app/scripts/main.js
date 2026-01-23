@@ -24,7 +24,9 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   var storage = null;
   var groupMap = {};
 
+  // Guardamos referencia a la API original de Geotab
   var geotabApi = ApiWrapper(api);
+  var originalApi = api;
 
   var templateString = '<li>' +
     '<div class="g-col checkmateListBuilderRow sygic-vehicle" data-device-id="<%= vehicle.id %>">' +
@@ -92,6 +94,17 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   '</li>';
 
   var compiledTemplate = _.template(templateString);
+
+  // Helper para llamar a la API directa de Geotab con Promesas
+  function apiCall(method, params) {
+    return new Promise(function(resolve, reject) {
+      originalApi.call(method, params, function(result) {
+        resolve(result);
+      }, function(error) {
+        reject(error);
+      });
+    });
+  }
 
   function getDimensionsString(viewModel) {
     var parts = [];
@@ -245,7 +258,6 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     list.appendChild(fragment);
     updatePaginator();
     
-    // Scroll to top
     var container = document.querySelector('.checkmateListBuilder');
     if (container) {
       container.scrollTop = 0;
@@ -335,7 +347,6 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       listContainer.parentNode.insertBefore(paginator, listContainer.nextSibling);
     }
 
-    // Event listeners
     var prevBtn = paginator.querySelector('.sygic-prev');
     var nextBtn = paginator.querySelector('.sygic-next');
     var firstBtn = paginator.querySelector('.sygic-first');
@@ -361,33 +372,28 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       totalPages = Math.ceil(allDevices.length / PAGE_SIZE);
       currentPage = 1;
       renderCurrentPage();
-      console.log('[SYGIC] Page size changed to', PAGE_SIZE);
     };
   }
 
-  // CARGA DE DEVICES OPTIMIZADA CON propertySelector (como lo hace Geotab)
+  // CARGA OPTIMIZADA USANDO API DIRECTA CON propertySelector
   async function loadAllDevices() {
     console.log('[SYGIC] Loading devices with propertySelector...');
+    console.time('[SYGIC] Device load time');
     
-    // Solo traemos los campos necesarios para reducir el tamaño de la respuesta
-    var propertySelector = {
-      fields: ['id', 'name', 'groups'],
-      isIncluded: true
-    };
-
-    var search = {
-      groups: state.getGroupFilter()
-    };
-
-    var devices = await geotabApi.callAsync('Get', {
+    var devices = await apiCall('Get', {
       typeName: 'Device',
-      propertySelector: propertySelector,
-      search: search
+      propertySelector: {
+        fields: ['id', 'name', 'groups'],
+        isIncluded: true
+      },
+      search: {
+        groups: state.getGroupFilter()
+      }
     });
 
+    console.timeEnd('[SYGIC] Device load time');
     console.log('[SYGIC] Loaded', devices.length, 'devices');
 
-    // Asignar nombres de grupos
     devices.forEach(function(device) {
       device.groups.forEach(function(g) {
         g.name = groupMap[g.id] || g.id;
@@ -397,15 +403,14 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     allDevices = devices;
     totalPages = Math.ceil(allDevices.length / PAGE_SIZE);
     currentPage = 1;
-
-    console.log('[SYGIC] Total pages:', totalPages);
   }
 
   async function loadStaticData() {
     console.log('[SYGIC] Loading static data...');
+    console.time('[SYGIC] Static data load time');
 
     var results = await Promise.all([
-      geotabApi.callAsync('Get', { typeName: 'Group' }),
+      apiCall('Get', { typeName: 'Group' }),
       storage.getAllDimensionsModelsAsync(),
       geotabApi.getSessionAsync()
     ]);
@@ -414,7 +419,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     var dimensions = results[1];
     var session = results[2];
 
-    console.log('[SYGIC] Groups:', groups.length, '- Dimensions:', Object.keys(dimensions || {}).length);
+    console.log('[SYGIC] Groups:', groups.length);
 
     groupMap = {};
     groups.forEach(function(g) {
@@ -424,12 +429,12 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     allDimensions = dimensions;
 
     var userResults = await Promise.all([
-      geotabApi.callAsync('Get', { typeName: 'User', search: { name: session.userName } }),
-      geotabApi.callAsync('Get', { typeName: 'Group', search: { id: 'groupSecurityId' } })
+      apiCall('Get', { typeName: 'User', search: { name: session.userName } }),
+      apiCall('Get', { typeName: 'Group', search: { id: 'groupSecurityId' } })
     ]);
 
     currentUser = new User(userResults[0][0], userResults[1]);
-    console.log('[SYGIC] User:', session.userName);
+    console.timeEnd('[SYGIC] Static data load time');
   }
 
   function addStyles() {
@@ -443,32 +448,25 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       'border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}' +
       '@keyframes spin{to{transform:rotate(360deg)}}' +
       '#sygic-vehicle-list{padding:0;margin:0}' +
-      
       '.sygic-paginator{display:flex;align-items:center;justify-content:space-between;' +
       'padding:12px 16px;background:#f8f9fa;border-top:1px solid #e0e0e0}' +
-      
       '.sygic-paginator-left{flex:1}' +
       '.sygic-paginator-center{display:flex;align-items:center;gap:8px}' +
       '.sygic-paginator-right{flex:1;text-align:right}' +
-      
       '.sygic-page-info{color:#5f6368;font-size:13px}' +
-      
       '.sygic-page-btn{width:32px;height:32px;border:1px solid #dadce0;border-radius:4px;' +
       'background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;' +
       'color:#5f6368;transition:all .2s}' +
       '.sygic-page-btn:hover:not(:disabled){background:#f1f3f4;border-color:#1a73e8;color:#1a73e8}' +
       '.sygic-page-btn:disabled{opacity:.4;cursor:not-allowed}' +
-      
       '.sygic-page-input-container{display:flex;align-items:center;gap:6px}' +
       '.sygic-page-input{width:50px;height:30px;border:1px solid #dadce0;border-radius:4px;' +
       'text-align:center;font-size:13px;padding:0 4px}' +
       '.sygic-page-input:focus{outline:none;border-color:#1a73e8}' +
       '.sygic-page-total{color:#5f6368;font-size:13px}' +
-      
       '.sygic-page-size{height:30px;border:1px solid #dadce0;border-radius:4px;' +
       'padding:0 8px;font-size:13px;cursor:pointer}' +
       '.sygic-page-size:focus{outline:none;border-color:#1a73e8}' +
-      
       '.sygic-paginator-right label{color:#5f6368;font-size:13px;margin-right:6px}';
 
     document.head.appendChild(style);
@@ -488,7 +486,6 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     focus: async function() {
       console.log('[SYGIC] ============ FOCUS ============');
       elAddin.className = '';
-
       showLoading(true);
 
       try {

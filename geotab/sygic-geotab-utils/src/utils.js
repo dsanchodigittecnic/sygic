@@ -1,517 +1,583 @@
 import _ from 'underscore';
-import {
-  User,
-  ApiWrapper,
-  Dimensions,
-  DimensionsStorage,
-  DimensionsModel,
-} from 'sygic-geotab-utils';
 
-geotab.addin.mygeotabSygicPage = function (api, state) {
-  'use strict';
+const Filters = (() => {
+  let RequiredEditFilters = ['DeviceAdmin', 'ManageAddInData'];
+  let RequiredViewFilters = ['DeviceList', 'ViewAddInData',];
+  let RequiredPlanViewFilters = ['TripsActivityReport'];
+  let Joker = 'Everything';
+  return {
+    All: RequiredEditFilters.concat(RequiredViewFilters).concat(RequiredPlanViewFilters).concat(Joker),
+    RequiredEditFilters,
+    RequiredViewFilters,
+    RequiredPlanViewFilters: RequiredPlanViewFilters,
+    Joker
+  };
+})();
 
-  var elAddin = document.getElementById('mygeotabSygicPage');
-  
-  // Configuración de paginación
-  var PAGE_SIZE = 25;
-  var currentPage = 1;
-  var totalPages = 1;
-  
-  // Caché de datos
-  var allDevices = [];
-  var allDimensions = null;
-  var currentUser = null;
-  var storage = null;
-  var groupMap = {};
-
-  // Guardamos referencia a la API original de Geotab
-  var geotabApi = ApiWrapper(api);
-  var originalApi = api;
-
-  var templateString = '<li>' +
-    '<div class="g-col checkmateListBuilderRow sygic-vehicle" data-device-id="<%= vehicle.id %>">' +
-      '<div class="g-row">' +
-        '<div class="g-main g-main-col g-main_wider">' +
-          '<div class="g-name"><span class="ellipsis"><%= vehicle.name %></span></div>' +
-          '<div class="g-comment"><div class="secondaryData ellipsis"><%= vehicle_groups_string %></div></div>' +
-          '<div class="g-comment vehicle-dimensions-comment"><div class="secondaryData ellipsis"><%= vehicle_dimensions_string %></div></div>' +
-        '</div>' +
-        '<div class="g-ctrl">' +
-          '<a href="#" class="geotabButton geotabButton-empty sygic-edit-dimensions<%= user.canModify ? "" : " hidden" %>">' +
-            '<svg class="svgIcon geotabButtonIcons"><use xlink:href="#geo-pencil-icon">' +
-              '<svg viewBox="0 0 32 32" id="geo-pencil-icon"><path d="M7.79 29.124l1.878-1.915-4.919-4.919-1.915 1.915v2.253h2.703v2.666H7.79zm10.927-19.45q0-.45-.45-.45-.189 0-.339.15L6.551 20.714q-.15.15-.15.375 0 .45.488.45.188 0 .338-.15l11.377-11.34q.113-.15.113-.375zM17.59 5.657l8.711 8.71L8.88 31.828H.17V23.08zm14.306 2.027q0 1.09-.751 1.878l-3.492 3.492-8.711-8.749L22.434.851q.75-.789 1.877-.789 1.09 0 1.915.789l4.919 4.918q.75.827.75 1.915z"></path></svg>' +
-            '</use></svg>' +
-          '</a>' +
-        '</div>' +
-      '</div>' +
-      '<div class="g-row hidden sygic-vehicle-dimensions-form">' +
-        '<fieldset class="geotabFieldset sygic-vehicle-dimensions-fieldset" style="background-color: transparent">' +
-          '<% _.each(vehicle_dimensions, function(dimension) { %>' +
-            '<% if (dimension.key != "hazmat") { %>' +
-              '<% var name = "sygic-truck-dimensions-" + dimension.key; %>' +
-              '<% if (dimension.options) { %>' +
-                '<div class="geotabField">' +
-                  '<label for="<%= name %>"><%= dimension.label %></label>' +
-                  '<select name="<%= name %>" class="geotabFormEditField">' +
-                    '<% _.each(dimension.options, function(option, key) { %>' +
-                      '<option value="<%= key %>" <%= dimension.value === key ? "selected" : "" %>><%= option %></option>' +
-                    '<% }); %>' +
-                  '</select>' +
-                '</div>' +
-              '<% } else { %>' +
-                '<div class="geotabField">' +
-                  '<label for="<%= name %>"><%= dimension.label %></label>' +
-                  '<input type="number" step="0.1" name="<%= name %>" class="geotabFormEditField" value="<%= dimension.value %>" />' +
-                '</div>' +
-              '<% } %>' +
-            '<% } %>' +
-          '<% }); %>' +
-          '<div data-name="hazmat-fields">' +
-            '<% _.each(vehicle_hazmat, function(hazmat) { %>' +
-              '<% var name = "sygic-truck-hazmat-" + hazmat.key; %>' +
-              '<% if (hazmat.key === "adr_tunnel") { %>' +
-                '<div class="geotabField" <%= !hazmat.visible ? "hidden" : "" %>>' +
-                  '<label for="<%= name %>"><%= hazmat.label %></label>' +
-                  '<select name="<%= name %>" class="geotabFormEditField">' +
-                    '<option></option>' +
-                    '<% _.each(hazmat.options, function(option) { %>' +
-                      '<option value="<%= option %>" <%= hazmat.value === option ? "selected" : "" %>><%= option %></option>' +
-                    '<% }); %>' +
-                  '</select>' +
-                '</div>' +
-              '<% } else { %>' +
-                '<div class="geotabField" <%= !hazmat.visible ? "hidden" : "" %>>' +
-                  '<label for="<%= name %>"><%= hazmat.label %></label>' +
-                  '<input type="checkbox" name="<%= name %>" class="geotabFormEditField" <%= hazmat.value ? "checked" : "" %> />' +
-                '</div>' +
-              '<% } %>' +
-            '<% }); %>' +
-          '</div>' +
-          '<button class="geotabButton sygic-vehicle-dimensions-save"><%= apply_changes %></button>' +
-        '</fieldset>' +
-      '</div>' +
-    '</div>' +
-  '</li>';
-
-  var compiledTemplate = _.template(templateString);
-
-  // Helper para llamar a la API directa de Geotab con Promesas
-  function apiCall(method, params) {
-    return new Promise(function(resolve, reject) {
-      originalApi.call(method, params, function(result) {
-        resolve(result);
-      }, function(error) {
-        reject(error);
-      });
-    });
+class RequiredFilters {
+  constructor(requiredFiltersArray) {
+    this.requiredFilters = Object.assign(
+      {},
+      ...requiredFiltersArray.map((a) => ({ [a]: undefined }))
+    );
   }
 
-  function getDimensionsString(viewModel) {
-    var parts = [];
-    for (var key in viewModel) {
-      if (viewModel.hasOwnProperty(key)) {
-        var model = viewModel[key];
-        if (typeof model.value === 'number' || typeof model.value === 'string') {
-          if (key === 'routing_type') {
-            parts.push(model.label + ': ' + DimensionsModel.getRoutingTypeString(model.value, state));
-          } else {
-            parts.push(model.label + ': ' + model.value);
-          }
+  setAllowed(filter, value) {
+    if (this.requiredFilters[filter] === undefined) {
+      this.requiredFilters[filter] = value;
+      return true;
+    }
+    return false;
+  }
+
+  isInitialized() {
+    return (
+      _.every(this.requiredFilters, (f) => f !== undefined) ||
+      this.requiredFilters[Filters.Joker] === true
+    );
+  }
+
+  hasAllRequiredFilters() {
+    return (
+      _.every(this.requiredFilters, (f) => f === true) ||
+      this.requiredFilters[Filters.Joker] === true
+    );
+  }
+}
+
+export class User {
+  constructor(geotabUser, allSecurityGroups) {
+    this.canView = false;
+    this.canModify = false;
+    this.canViewPlans = false;
+    this.isMetric = geotabUser.isMetric ?? true; //in case the api contract changes, we will default to true
+    let userSecurityGroups = geotabUser.securityGroups.map((g) => g.id);
+    if (userSecurityGroups.length > 0) {
+      let securityGroupDetail = _.find(
+        allSecurityGroups,
+        (c) => c.id === userSecurityGroups[0]
+      );
+      this.buildPermissionTree(allSecurityGroups, securityGroupDetail);
+      this.canModify = this.hasClearanceInTree(
+        securityGroupDetail,
+        Filters.RequiredEditFilters
+      );
+      this.canView = this.hasClearanceInTree(
+        securityGroupDetail,
+        Filters.RequiredViewFilters
+      );
+      this.canViewPlans = this.hasClearanceInTree(
+        securityGroupDetail,
+        Filters.RequiredPlanViewFilters
+      )
+    }
+  }
+
+  //purely for debugging purposes and convenience
+  stripRedundantData(securityGroup) {
+    if (securityGroup) {
+      if (securityGroup.securityFilters)
+        securityGroup.securityFilters = _.filter(
+          securityGroup.securityFilters,
+          (f) => Filters.All.includes(f.securityIdentifier)
+        );
+      if (securityGroup.color) delete securityGroup.color;
+      if (securityGroup.reference) delete securityGroup.reference;
+      if (securityGroup.comments) delete securityGroup.comments;
+    }
+  }
+
+  getAndAssignParent(allSecurityGroups, securityGroup) {
+    this.stripRedundantData(securityGroup);
+    const parent = _.find(allSecurityGroups, (c) => {
+      return _.find(c.children, (c) => c.id === securityGroup.id);
+    });
+    securityGroup.parent = parent;
+    return parent;
+  }
+
+  buildPermissionTree(allSecurityGroups, securityGroup) {
+    let parent = this.getAndAssignParent(allSecurityGroups, securityGroup);
+    while (parent) {
+      parent = this.getAndAssignParent(allSecurityGroups, parent);
+    }
+  }
+
+  hasClearanceInTree(securityGroup, requiredSecurityFilter, cb) {
+    let parent = securityGroup;
+    let requiredFilters = new RequiredFilters(requiredSecurityFilter);
+
+    while (parent && !requiredFilters.isInitialized()) {
+      let filtersFor = _.filter(
+        parent.securityFilters,
+        (f) =>
+          requiredSecurityFilter.includes(f.securityIdentifier) ||
+          f.securityIdentifier === Filters.Joker
+      );
+
+      _.each(filtersFor, (filter) => {
+        requiredFilters.setAllowed(filter.securityIdentifier, filter.isAdd);
+      });
+      parent = parent.parent;
+    }
+    return requiredFilters.hasAllRequiredFilters();
+  }
+}
+
+export function ApiWrapper(api) {
+  // make use of async/await instead of callbacks
+  return {
+    callAsync: (method, parameters) => {
+      return new Promise((resolve, reject) => {
+        api.call(
+          method,
+          parameters,
+          (result) => resolve(result),
+          (err) => reject(err)
+        );
+      })
+    },
+    getSessionAsync: () => {
+      return new Promise((resolve, reject) => {
+        api.getSession((session) => {
+          resolve(session);
+        });
+      })
+    },
+  };
+}
+
+export class HazmatModel {
+  constructor({ general, h_class, adr_tunnel, water}) {
+    // US
+    this.h_class = h_class;   // Possible values: 1,2,3,4,5,6,7,8,9,I , values can be combined, e.g. h_class='124'
+    // EU
+    this.general = general;   // true/false
+    this.adr_tunnel = adr_tunnel; // Possible values: B, C, D, E, values cannot be combined
+    this.water = water;       // true/false
+  }
+  static getEmpty() {
+    return new HazmatModel({general: false, h_class:'', adr_tunnel:'', water: false});
+  }
+
+  static getFromStringInputs({general, h_class, adr_tunnel, water}) {
+    if (general === undefined) { general = false; }
+    if (h_class === undefined) { h_class = ''; }
+    if (adr_tunnel === undefined) { adr_tunnel = ''; }
+    if (water === undefined) { water = ''; }
+    return new HazmatModel({general: general, h_class: h_class, adr_tunnel: adr_tunnel, water: water});
+  }
+
+  containsHClass(classId) {
+    return this.h_class.indexOf(classId) > -1
+  }
+
+  getViewModel(isMetric, state) {
+    return {
+      // EU
+      general: {
+        value: this.general,
+        label: `${state.translate('General Hazmat')}`,
+        visible: isMetric || this.general,
+      },
+      water: {
+        value: this.water,
+        label: `${state.translate('Harmful to water')}`,
+        visible: isMetric || this.water,
+      },
+      adr_tunnel: {
+        value: this.adr_tunnel,
+        label: `${state.translate('ADR tunnel')}`,
+        visible: isMetric || this.adr_tunnel,
+        options: ['B', 'C', 'D', 'E']
+      },
+      // USA
+      class1: {
+        value: this.containsHClass('1'),
+        label: `${state.translate('Explosive')} (Class 1)`,
+        visible: !isMetric || this.containsHClass('1'),
+      },
+      class2: {
+        value: this.containsHClass('2'),
+        label: `${state.translate('Flammable gas')} (Class 2)`,
+        visible: !isMetric || this.containsHClass('2'),
+      },
+      class3: {
+        value: this.containsHClass('3'),
+        label: `${state.translate('Flammable liquid')} (Class 3)`,
+        visible: !isMetric || this.containsHClass('3'),
+      },
+      class4: {
+        value: this.containsHClass('4'),
+        label: `${state.translate('Flammable solid')} (Class 4)`,
+        visible: !isMetric || this.containsHClass('4'),
+      },
+      class5: {
+        value: this.containsHClass('5'),
+        label: `${state.translate('Oxidizer')} (Class 5)`,
+        visible: !isMetric || this.containsHClass('5'),
+      },
+      class6: {
+        value: this.containsHClass('6'),
+        label: `${state.translate('Poison')} (Class 6)`,
+        visible: !isMetric || this.containsHClass('6'),
+      },
+      class7: {
+        value: this.containsHClass('7'),
+        label: `${state.translate('Radioactive material')} (Class 7)`,
+        visible: !isMetric || this.containsHClass('7'),
+      },
+      class8: {
+        value: this.containsHClass('8'),
+        label: `${state.translate('Corrosive material')} (Class 8)`,
+        visible: !isMetric || this.containsHClass('8'),
+      },
+      class9: {
+        value: this.containsHClass('9'),
+        label: `${state.translate('Miscellaneous')} (Class 9)`,
+        visible: !isMetric || this.containsHClass('9'),
+      },
+      classI: {
+        value: this.containsHClass('I'),
+        label: `${state.translate('Poison inhalation')} (Class I)`,
+        visible: !isMetric || this.containsHClass('I'),
+      },
+    }
+  }
+
+} // class
+
+export class DimensionsModel {
+  constructor({ routing_type, width, height, total_weight, axle_weight, total_length, max_speed, hazmat}) {
+    this.routing_type = routing_type === undefined ? 'tru': routing_type;
+    this.width = width;
+    this.height = height;
+    this.total_length = total_length;
+    this.axle_weight = axle_weight;
+    this.total_weight = total_weight;
+    this.max_speed = max_speed;
+    if (hazmat === undefined) {
+      this.hazmat = HazmatModel.getEmpty();
+    } else {
+      this.hazmat = hazmat;
+    }
+  }
+
+  static getEmpty() {
+    return new DimensionsModel({ undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined });
+  }
+
+  static getEmptyViewModel(isMetric, state) {
+    return new DimensionsModel.getEmpty().getViewModelWithUnits(isMetric, state)
+  }
+
+  static getFromStringInputs({ routing_type, width, height, total_weight, axle_weight, total_length, max_speed, hazmat }, isMetric = true) {
+    width = Number.parseFloat(width);
+    height = Number.parseFloat(height);
+    total_weight = Number.parseFloat(total_weight);
+    axle_weight = Number.parseFloat(axle_weight);
+    total_length = Number.parseFloat(total_length);
+    max_speed = Number.parseFloat(max_speed);
+    if (isMetric === false) {
+      width = Dimensions.convertDimensionToMetric(width);
+      height = Dimensions.convertDimensionToMetric(height);
+      total_weight = Dimensions.convertWeightToMetric(total_weight);
+      axle_weight = Dimensions.convertWeightToMetric(axle_weight);
+      total_length = Dimensions.convertDimensionToMetric(total_length);
+      max_speed = Dimensions.convertSpeedToMetric(max_speed);
+    }
+
+    if (hazmat !== undefined) {
+      hazmat = HazmatModel.getFromStringInputs(hazmat);
+    } else {
+      hazmat = HazmatModel.getEmpty();
+    }
+
+    const data = { routing_type, width, height, total_weight, axle_weight, total_length, max_speed, hazmat };
+    return new DimensionsModel(data);
+  }
+
+  static getRoutingTypeString(routing_type, state)
+  {
+    if (routing_type === 'tru') {
+      return `${state.translate('Truck')}`;
+    } else if (routing_type === 'van') {
+      return `${state.translate('Van')}`;
+    } else if (routing_type === 'car') {
+      return `${state.translate('Car')}`;
+    } else if (routing_type === 'cmp') {
+      return `${state.translate('Camper')}`;
+    } else if (routing_type === 'bus') {
+      return `${state.translate('Bus')}`;
+    }
+  }
+
+  getViewModelWithUnits(isMetric, state) {
+    let width = undefined;
+    let height = undefined;
+    let total_length = undefined;
+    let total_weight = undefined;
+    let axle_weight = undefined;
+    let max_speed = undefined;
+    if (isMetric) {
+      width = this.width;
+      height = this.height;
+      total_length = this.total_length;
+      total_weight = this.total_weight;
+      axle_weight = this.axle_weight;
+      max_speed = this.max_speed;
+    } else {
+      width = Dimensions.convertDimensionToImperial(this.width);
+      height = Dimensions.convertDimensionToImperial(this.height);
+      total_length = Dimensions.convertDimensionToImperial(this.total_length);
+      axle_weight = Dimensions.convertWeightToImperial(this.axle_weight);
+      total_weight = Dimensions.convertWeightToImperial(this.total_weight);
+      max_speed = Dimensions.convertSpeedToImperial(this.max_speed);
+    }
+
+    // numbers are stored with 5 decimals. Displayed and used when parsing inputs with 2 decimals.
+    let roundTo2Decimals = (number) => {
+      if (number)
+        return Math.round(number * 100) / 100;
+    }
+
+    let roundToDecimals = (number) => {
+      if (number)
+        return Math.round(number);
+    }
+
+    return {
+      routing_type: {
+        value: this.routing_type,
+        label: `${state.translate('Vehicle type')}`,
+        options: {
+          'tru': DimensionsModel.getRoutingTypeString('tru', state),
+          'van': DimensionsModel.getRoutingTypeString('van', state),
+          'bus': DimensionsModel.getRoutingTypeString('bus', state),
+          'car': DimensionsModel.getRoutingTypeString('car', state),
+          'cmp': DimensionsModel.getRoutingTypeString('cmp', state)
         }
+      },
+      width: {
+        value: roundTo2Decimals(width),
+        label: isMetric ? `${state.translate('Width')} (mm)` : `${state.translate('Width')} (ft)`
+      },
+      height: {
+        value: roundTo2Decimals(height),
+        label: isMetric ? `${state.translate('Height')} (mm)` : `${state.translate('Height')} (ft)`
+      },
+      total_length: {
+        value: roundTo2Decimals(total_length),
+        label: isMetric ? `${state.translate('Total length')} (mm)` : `${state.translate('Total length')} (ft)`
+      },
+      axle_weight: {
+        value: roundTo2Decimals(axle_weight),
+        label: isMetric ? `${state.translate('Axle weight')} (kg)` : `${state.translate('Axle weight')} (lb)`
+      },
+      total_weight: {
+        value: roundTo2Decimals(total_weight),
+        label: isMetric ? `${state.translate('Total weight')} (kg)` : `${state.translate('Total weight')} (lb)`
+      },
+      max_speed: {
+        value: roundToDecimals(max_speed),
+        label: isMetric ? `${state.translate('Max speed')} (km/h)` : `${state.translate('Max speed')} (mph)`
+      },
+      hazmat : {
+        value: this.hazmat.getViewModel(isMetric, state),
+      },
+    }
+  }
+}
+
+const constants = {
+  poundsInKilos: 2.20462262185,
+  feetInMilimeters: 0.00328084,
+  mphInKph: 0.621371192
+};
+
+export let Dimensions = {
+  convertSpeedToMetric: (number, rounding = 1e5) => {
+    if (number)
+      return Math.round(number / constants.mphInKph * rounding) / rounding;
+    else
+      return null;
+  },
+
+  convertWeightToMetric: (number, rounding = 1e5) => {
+    if (number)
+      return Math.round(number / constants.poundsInKilos * rounding) / rounding;
+    else
+      return null;
+  },
+
+  convertDimensionToMetric: (number, rounding = 1e5) => {
+    if (number)
+      return Math.round(number  / constants.feetInMilimeters * rounding) / rounding;
+    else
+      return null;
+  },
+
+  convertSpeedToImperial: (number, rounding = 1e5) => {
+    if (number)
+      return Math.round(number * constants.mphInKph * rounding) / rounding;
+    else
+      return null;
+  },
+
+  convertWeightToImperial: (number, rounding = 1e5) => {
+    if (number)
+      return Math.round(number * constants.poundsInKilos * rounding) / rounding;
+    else
+      return null;
+  },
+
+  convertDimensionToImperial: (number, rounding = 1e5) => {
+    if (number)
+      return Math.round(number * constants.feetInMilimeters * rounding) / rounding;
+    else
+      return null;
+  },
+
+  getInputValues: (parentElement) => {
+    let dimensionsModel = DimensionsModel.getEmpty();
+    for (const key in dimensionsModel) {
+      if (dimensionsModel.hasOwnProperty(key) && key !== 'isMetric' && key !== 'hazmat') {
+        let inputElement = parentElement.querySelector(`input[name=sygic-truck-dimensions-${key}]`)
+        if (!inputElement) {
+          inputElement = parentElement.querySelector(`select[name=sygic-truck-dimensions-${key}]`)
+        }
+        dimensionsModel[key] = inputElement.value;
       }
     }
-    return parts.join(', ');
-  }
 
-  function getViewModelForDevice(deviceId) {
-    if (allDimensions && allDimensions[deviceId]) {
-      return allDimensions[deviceId].getViewModelWithUnits(currentUser.isMetric, state);
+    const hazmats_div = parentElement.querySelector('div[data-name=hazmat-fields]');
+    if (hazmats_div) {
+      let hazmat_classes = "";
+      for (const h_class of "123456789I") {
+        const checked = parentElement.querySelector(`input[name=sygic-truck-hazmat-class${h_class}]`).checked;
+        if (checked) {
+          hazmat_classes += h_class;
+        }
+      }
+
+      const hazmat_general = parentElement.querySelector('input[name=sygic-truck-hazmat-general]').checked;
+      const adr_tunnel = parentElement.querySelector('select[name=sygic-truck-hazmat-adr_tunnel]').value;
+      const water = parentElement.querySelector('input[name=sygic-truck-hazmat-water]').checked;
+
+      dimensionsModel.hazmat.h_class = hazmat_classes;
+      dimensionsModel.hazmat.general = hazmat_general;
+      dimensionsModel.hazmat.adr_tunnel = adr_tunnel;
+      dimensionsModel.hazmat.water = water;
     }
-    return DimensionsModel.getEmptyViewModel(currentUser.isMetric, state);
-  }
 
-  function createDeviceHTML(device) {
-    var viewModel = getViewModelForDevice(device.id);
-    var dimensionDetailsString = allDimensions && allDimensions[device.id]
-      ? getDimensionsString(viewModel)
-      : 'Dimensions unset';
+    return dimensionsModel;
+  },
+};
 
-    var dimensionsTemplateObject = Object.keys(viewModel)
-      .filter(function(key) { return key !== 'hazmat'; })
-      .map(function(key) {
+export function DimensionsStorage(geotabApi) {
+  const addinDataGuid = 'ajk3ZmUzNmQtYjNlYS0yMGI';
+  return {
+    getAllDimensionsModelsAsync: async () => {
+      let result = await geotabApi.callAsync('Get', {
+        typeName: 'AddInData',
+        search: {
+          addInId: addinDataGuid,
+        },
+      });
+      const data = result.map(r => {
+        let isMetric = undefined;
+        if (r.details.dimensions.isMetric === false) isMetric = false; //for backward compatibility
+        if (r.details.dimensions.isMetric === true) isMetric = true;
         return {
-          value: viewModel[key].value,
-          key: key,
-          label: viewModel[key].label,
-          options: viewModel[key].options
+          [r.details.vehicle_id]: DimensionsModel.getFromStringInputs(r.details.dimensions, isMetric)
         };
       });
-
-    var hazmatTemplateObject = Object.keys(viewModel.hazmat.value).map(function(key) {
-      return {
-        value: viewModel.hazmat.value[key].value,
-        key: key,
-        label: viewModel.hazmat.value[key].label,
-        visible: viewModel.hazmat.value[key].visible,
-        options: viewModel.hazmat.value[key].options
-      };
-    });
-
-    var groupNames = device.groups
-      .map(function(g) { return g.name || groupMap[g.id] || g.id; })
-      .join(', ');
-
-    return compiledTemplate({
-      vehicle: device,
-      vehicle_dimensions_string: dimensionDetailsString,
-      vehicle_groups_string: groupNames,
-      vehicle_dimensions: dimensionsTemplateObject,
-      vehicle_hazmat: hazmatTemplateObject,
-      user: currentUser,
-      apply_changes: state.translate('Apply Changes')
-    });
-  }
-
-  function attachEventsToRow(row) {
-    var deviceId = row.dataset.deviceId;
-    var editBtn = row.querySelector('.sygic-edit-dimensions');
-    var form = row.querySelector('.sygic-vehicle-dimensions-form');
-    var comment = row.querySelector('.vehicle-dimensions-comment');
-
-    if (editBtn) {
-      editBtn.onclick = function(e) {
-        e.preventDefault();
-        form.classList.toggle('hidden');
-        comment.classList.toggle('hidden');
-      };
-    }
-
-    var saveBtn = row.querySelector('.sygic-vehicle-dimensions-save');
-    if (saveBtn) {
-      saveBtn.onclick = async function() {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-
-        try {
-          var fieldSet = row.querySelector('.sygic-vehicle-dimensions-fieldset');
-          var inputs = Dimensions.getInputValues(fieldSet);
-          var model = DimensionsModel.getFromStringInputs(inputs, currentUser.isMetric);
-
-          var stored = await storage.getDimensionsModelAsync(deviceId);
-          if (!stored) {
-            await storage.addDimensionsAsync(model, deviceId);
-          } else {
-            await storage.setDimensionsAsync(model, stored.id, deviceId);
-          }
-
-          if (!allDimensions) {
-            allDimensions = {};
-          }
-          allDimensions[deviceId] = model;
-
-          var vm = model.getViewModelWithUnits(currentUser.isMetric, state);
-          comment.querySelector('.secondaryData').textContent = getDimensionsString(vm);
-
-          form.classList.add('hidden');
-          comment.classList.remove('hidden');
-        } catch (e) {
-          console.error('[SYGIC] Error saving:', e);
-        }
-
-        saveBtn.disabled = false;
-        saveBtn.textContent = state.translate('Apply Changes');
-      };
-    }
-  }
-
-  function showLoading(show) {
-    var list = document.getElementById('sygic-vehicle-list');
-    if (show) {
-      list.innerHTML = '<li style="text-align:center;padding:40px;list-style:none;">' +
-        '<div class="sygic-spinner"></div><span>Loading...</span></li>';
-    }
-  }
-
-  function renderCurrentPage() {
-    var list = document.getElementById('sygic-vehicle-list');
-    list.innerHTML = '';
-
-    var startIndex = (currentPage - 1) * PAGE_SIZE;
-    var endIndex = Math.min(startIndex + PAGE_SIZE, allDevices.length);
-    var devicesToRender = allDevices.slice(startIndex, endIndex);
-
-    console.log('[SYGIC] Rendering page', currentPage, '- devices', startIndex + 1, 'to', endIndex, 'of', allDevices.length);
-
-    var fragment = document.createDocumentFragment();
-    var tempDiv = document.createElement('div');
-
-    devicesToRender.forEach(function(device) {
-      tempDiv.innerHTML = createDeviceHTML(device);
-      var li = tempDiv.firstElementChild;
-      var row = li.querySelector('.sygic-vehicle');
-      if (row) {
-        attachEventsToRow(row);
-      }
-      fragment.appendChild(li);
-    });
-
-    list.appendChild(fragment);
-    updatePaginator();
-    
-    var container = document.querySelector('.checkmateListBuilder');
-    if (container) {
-      container.scrollTop = 0;
-    }
-  }
-
-  function updatePaginator() {
-    var paginator = document.getElementById('sygic-paginator');
-    if (!paginator) return;
-
-    var info = paginator.querySelector('.sygic-page-info');
-    var prevBtn = paginator.querySelector('.sygic-prev');
-    var nextBtn = paginator.querySelector('.sygic-next');
-    var firstBtn = paginator.querySelector('.sygic-first');
-    var lastBtn = paginator.querySelector('.sygic-last');
-    var pageInput = paginator.querySelector('.sygic-page-input');
-    var totalPagesSpan = paginator.querySelector('.sygic-total-pages');
-
-    var startItem = ((currentPage - 1) * PAGE_SIZE) + 1;
-    var endItem = Math.min(currentPage * PAGE_SIZE, allDevices.length);
-
-    info.textContent = startItem + ' - ' + endItem + ' of ' + allDevices.length;
-    pageInput.value = currentPage;
-    pageInput.max = totalPages;
-    totalPagesSpan.textContent = totalPages;
-
-    prevBtn.disabled = currentPage <= 1;
-    firstBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= totalPages;
-    lastBtn.disabled = currentPage >= totalPages;
-  }
-
-  function goToPage(page) {
-    page = parseInt(page, 10);
-    if (isNaN(page) || page < 1) page = 1;
-    if (page > totalPages) page = totalPages;
-    
-    if (page !== currentPage) {
-      currentPage = page;
-      renderCurrentPage();
-    }
-  }
-
-  function createPaginator() {
-    var existingPaginator = document.getElementById('sygic-paginator');
-    if (existingPaginator) {
-      existingPaginator.remove();
-    }
-
-    var paginator = document.createElement('div');
-    paginator.id = 'sygic-paginator';
-    paginator.className = 'sygic-paginator';
-    paginator.innerHTML = 
-      '<div class="sygic-paginator-left">' +
-        '<span class="sygic-page-info">1 - 25 of 100</span>' +
-      '</div>' +
-      '<div class="sygic-paginator-center">' +
-        '<button class="sygic-page-btn sygic-first" title="First page">' +
-          '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z"/></svg>' +
-        '</button>' +
-        '<button class="sygic-page-btn sygic-prev" title="Previous page">' +
-          '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>' +
-        '</button>' +
-        '<div class="sygic-page-input-container">' +
-          '<input type="number" class="sygic-page-input" min="1" value="1"> ' +
-          '<span class="sygic-page-total">/ <span class="sygic-total-pages">1</span></span>' +
-        '</div>' +
-        '<button class="sygic-page-btn sygic-next" title="Next page">' +
-          '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>' +
-        '</button>' +
-        '<button class="sygic-page-btn sygic-last" title="Last page">' +
-          '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z"/></svg>' +
-        '</button>' +
-      '</div>' +
-      '<div class="sygic-paginator-right">' +
-        '<label>Per page: </label>' +
-        '<select class="sygic-page-size">' +
-          '<option value="10">10</option>' +
-          '<option value="25" selected>25</option>' +
-          '<option value="50">50</option>' +
-          '<option value="100">100</option>' +
-        '</select>' +
-      '</div>';
-
-    var listContainer = document.querySelector('.checkmateListBuilder');
-    if (listContainer) {
-      listContainer.parentNode.insertBefore(paginator, listContainer.nextSibling);
-    }
-
-    var prevBtn = paginator.querySelector('.sygic-prev');
-    var nextBtn = paginator.querySelector('.sygic-next');
-    var firstBtn = paginator.querySelector('.sygic-first');
-    var lastBtn = paginator.querySelector('.sygic-last');
-    var pageInput = paginator.querySelector('.sygic-page-input');
-    var pageSizeSelect = paginator.querySelector('.sygic-page-size');
-
-    prevBtn.onclick = function() { goToPage(currentPage - 1); };
-    nextBtn.onclick = function() { goToPage(currentPage + 1); };
-    firstBtn.onclick = function() { goToPage(1); };
-    lastBtn.onclick = function() { goToPage(totalPages); };
-
-    pageInput.onchange = function() { goToPage(this.value); };
-    pageInput.onkeydown = function(e) {
-      if (e.key === 'Enter') {
-        goToPage(this.value);
-      }
-    };
-
-    pageSizeSelect.value = PAGE_SIZE;
-    pageSizeSelect.onchange = function() {
-      PAGE_SIZE = parseInt(this.value, 10);
-      totalPages = Math.ceil(allDevices.length / PAGE_SIZE);
-      currentPage = 1;
-      renderCurrentPage();
-    };
-  }
-
-  // CARGA OPTIMIZADA USANDO API DIRECTA CON propertySelector
-  async function loadAllDevices() {
-    console.log('[SYGIC] Loading devices with propertySelector...');
-    console.time('[SYGIC] Device load time');
-    
-    var devices = await apiCall('Get', {
-      typeName: 'Device',
-      propertySelector: {
-        fields: ['id', 'name', 'groups'],
-        isIncluded: true
-      },
-      search: {
-        groups: state.getGroupFilter()
-      }
-    });
-
-    console.timeEnd('[SYGIC] Device load time');
-    console.log('[SYGIC] Loaded', devices.length, 'devices');
-
-    devices.forEach(function(device) {
-      device.groups.forEach(function(g) {
-        g.name = groupMap[g.id] || g.id;
+      return Object.assign({}, ...data.map(d => d));
+    },
+    getDimensionsModelAsync: async (vehicleId) => {
+      let result = await geotabApi.callAsync('Get', {
+        typeName: 'AddInData',
+        search: {
+          addInId: addinDataGuid,
+          whereClause: `vehicle_id=\"${vehicleId}\"`,
+        },
       });
-    });
-
-    allDevices = devices;
-    totalPages = Math.ceil(allDevices.length / PAGE_SIZE);
-    currentPage = 1;
-  }
-
-  async function loadStaticData() {
-    console.log('[SYGIC] Loading static data...');
-    console.time('[SYGIC] Static data load time');
-
-    var results = await Promise.all([
-      apiCall('Get', { typeName: 'Group' }),
-      storage.getAllDimensionsModelsAsync(),
-      geotabApi.getSessionAsync()
-    ]);
-
-    var groups = results[0];
-    var dimensions = results[1];
-    var session = results[2];
-
-    console.log('[SYGIC] Groups:', groups.length);
-
-    groupMap = {};
-    groups.forEach(function(g) {
-      groupMap[g.id] = g.name || g.id;
-    });
-
-    allDimensions = dimensions;
-
-    var userResults = await Promise.all([
-      apiCall('Get', { typeName: 'User', search: { name: session.userName } }),
-      apiCall('Get', { typeName: 'Group', search: { id: 'groupSecurityId' } })
-    ]);
-
-    currentUser = new User(userResults[0][0], userResults[1]);
-    console.timeEnd('[SYGIC] Static data load time');
-  }
-
-  function addStyles() {
-    if (document.getElementById('sygic-styles')) {
-      return;
-    }
-    var style = document.createElement('style');
-    style.id = 'sygic-styles';
-    style.textContent =
-      '.sygic-spinner{width:24px;height:24px;border:3px solid #e0e0e0;' +
-      'border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}' +
-      '@keyframes spin{to{transform:rotate(360deg)}}' +
-      '#sygic-vehicle-list{padding:0;margin:0}' +
-      '.sygic-paginator{display:flex;align-items:center;justify-content:space-between;' +
-      'padding:12px 16px;background:#f8f9fa;border-top:1px solid #e0e0e0}' +
-      '.sygic-paginator-left{flex:1}' +
-      '.sygic-paginator-center{display:flex;align-items:center;gap:8px}' +
-      '.sygic-paginator-right{flex:1;text-align:right}' +
-      '.sygic-page-info{color:#5f6368;font-size:13px}' +
-      '.sygic-page-btn{width:32px;height:32px;border:1px solid #dadce0;border-radius:4px;' +
-      'background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;' +
-      'color:#5f6368;transition:all .2s}' +
-      '.sygic-page-btn:hover:not(:disabled){background:#f1f3f4;border-color:#1a73e8;color:#1a73e8}' +
-      '.sygic-page-btn:disabled{opacity:.4;cursor:not-allowed}' +
-      '.sygic-page-input-container{display:flex;align-items:center;gap:6px}' +
-      '.sygic-page-input{width:50px;height:30px;border:1px solid #dadce0;border-radius:4px;' +
-      'text-align:center;font-size:13px;padding:0 4px}' +
-      '.sygic-page-input:focus{outline:none;border-color:#1a73e8}' +
-      '.sygic-page-total{color:#5f6368;font-size:13px}' +
-      '.sygic-page-size{height:30px;border:1px solid #dadce0;border-radius:4px;' +
-      'padding:0 8px;font-size:13px;cursor:pointer}' +
-      '.sygic-page-size:focus{outline:none;border-color:#1a73e8}' +
-      '.sygic-paginator-right label{color:#5f6368;font-size:13px;margin-right:6px}';
-
-    document.head.appendChild(style);
-  }
-
-  return {
-    initialize: async function(freshApi, freshState, initializeCallback) {
-      console.log('[SYGIC] ============ INITIALIZING ============');
-      if (freshState.translate) {
-        freshState.translate(elAddin || '');
-      }
-      addStyles();
-      storage = new DimensionsStorage(geotabApi);
-      initializeCallback();
-    },
-
-    focus: async function() {
-      console.log('[SYGIC] ============ FOCUS ============');
-      elAddin.className = '';
-      showLoading(true);
-
-      try {
-        await loadStaticData();
-        await loadAllDevices();
-        createPaginator();
-        renderCurrentPage();
-      } catch (error) {
-        console.error('[SYGIC] Init error:', error);
-        var list = document.getElementById('sygic-vehicle-list');
-        list.innerHTML = '<li style="color:red;padding:20px;">Error loading. Please refresh.</li>';
+      if (result && result.length > 0) {
+        let item = result[0];
+        let isMetric = undefined;
+        if (item.details.dimensions.isMetric === false) isMetric = false; //for backward compatibility
+        if (item.details.dimensions.isMetric === true) isMetric = true;
+        const model = DimensionsModel.getFromStringInputs(item.details.dimensions, isMetric);
+        return {
+          dimensions: model,
+          id: item.id,
+        };
       }
     },
-
-    blur: function() {
-      console.log('[SYGIC] ============ BLUR ============');
-      elAddin.className += ' hidden';
-      
-      var paginator = document.getElementById('sygic-paginator');
-      if (paginator) {
-        paginator.remove();
-      }
-      
-      allDevices = [];
-      currentPage = 1;
-      totalPages = 1;
-    }
+    addDimensionsAsync: async (dimensions, vehicleId) => {
+      let result = await geotabApi.callAsync('Add', {
+        typeName: 'AddInData',
+        entity: {
+          addInId: addinDataGuid,
+          details: {
+            vehicle_id: vehicleId,
+            dimensions: dimensions,
+          }
+        }
+      });
+      return result;
+    },
+    setDimensionsAsync: async (dimensions, dimensionsId, vehicleId) =>
+      await geotabApi.callAsync('Set', {
+        typeName: 'AddInData',
+        entity: {
+          addInId: addinDataGuid,
+          id: dimensionsId,
+          details: {
+            vehicle_id: vehicleId,
+            dimensions: dimensions,
+          }
+        }
+      })
   };
-};
+}
+
+export function createSygicTruckAttrUrl(dimensions) {
+  // https://www.sygic.com/sk/developers/professional-navigation-sdk/android/api-examples/custom-url
+  let valueArray = [];
+  if (dimensions.routing_type) {
+    valueArray.push(`rou=${dimensions.routing_type}`);
+  }
+  if (dimensions.total_weight) {
+    valueArray.push(`wei=${dimensions.total_weight}`);
+  }
+  if (dimensions.axle_weight) {
+    valueArray.push(`axw=${dimensions.axle_weight}`);
+  }
+  if (dimensions.total_length) {
+    valueArray.push(`len=${dimensions.total_length}`);
+  }
+  if (dimensions.width) {
+    valueArray.push(`wid=${dimensions.width}`);
+  }
+  if (dimensions.height) {
+    valueArray.push(`hei=${dimensions.height}`);
+  }
+  if (dimensions.max_speed) {
+    valueArray.push(`mxs=${dimensions.max_speed}`);
+  }
+
+  valueArray.push(`general=${dimensions.hazmat.general * 1}`);
+  valueArray.push(`water=${dimensions.hazmat.water * 1}`);
+  valueArray.push(`adr=${dimensions.hazmat.adr_tunnel}`);
+  if (dimensions.hazmat.h_class.length > 0) {
+    valueArray.push(`hClass=${dimensions.hazmat.h_class}`);
+  } else {
+    valueArray.push(`hClass=0`);
+  }
+
+  if (valueArray.length > 0) {
+    return `truckSettings|${valueArray.join('&')}`;
+  }
+  return '';
+}
