@@ -12,21 +12,17 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   var elAddin = document.getElementById('mygeotabSygicPage');
   
-  // Configuración de paginación
   var PAGE_SIZE = 25;
   var currentPage = 1;
   var totalPages = 1;
   
-  // Caché de datos
   var allDevices = [];
   var allDimensions = null;
   var currentUser = null;
   var storage = null;
   var groupMap = {};
 
-  // Guardamos referencia a la API original de Geotab
   var geotabApi = ApiWrapper(api);
-  var originalApi = api;
 
   var templateString = '<li>' +
     '<div class="g-col checkmateListBuilderRow sygic-vehicle" data-device-id="<%= vehicle.id %>">' +
@@ -95,10 +91,25 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   var compiledTemplate = _.template(templateString);
 
-  // Helper para llamar a la API directa de Geotab con Promesas
+  // Función para llamar a la API directamente (igual que Geotab)
   function apiCall(method, params) {
     return new Promise(function(resolve, reject) {
-      originalApi.call(method, params, function(result) {
+      api.call(method, params, function(result) {
+        resolve(result);
+      }, function(error) {
+        reject(error);
+      });
+    });
+  }
+
+  // Función específica para obtener devices (igual que Geotab)
+  function getDevices(propertySelector, search) {
+    return new Promise(function(resolve, reject) {
+      api.call('Get', {
+        typeName: 'Device',
+        propertySelector: propertySelector,
+        search: search
+      }, function(result) {
         resolve(result);
       }, function(error) {
         reject(error);
@@ -240,7 +251,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     var endIndex = Math.min(startIndex + PAGE_SIZE, allDevices.length);
     var devicesToRender = allDevices.slice(startIndex, endIndex);
 
-    console.log('[SYGIC] Rendering page', currentPage, '- devices', startIndex + 1, 'to', endIndex, 'of', allDevices.length);
+    console.log('[SYGIC] Rendering page', currentPage, 'devices', startIndex + 1, 'to', endIndex, 'of', allDevices.length);
 
     var fragment = document.createDocumentFragment();
     var tempDiv = document.createElement('div');
@@ -375,21 +386,28 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     };
   }
 
-  // CARGA OPTIMIZADA USANDO API DIRECTA CON propertySelector
+  // ==========================================
+  // CARGA DE DEVICES - IGUAL QUE GEOTAB
+  // ==========================================
   async function loadAllDevices() {
-    console.log('[SYGIC] Loading devices with propertySelector...');
+    console.log('[SYGIC] Loading devices...');
     console.time('[SYGIC] Device load time');
     
-    var devices = await apiCall('Get', {
-      typeName: 'Device',
-      propertySelector: {
-        fields: ['id', 'name', 'groups'],
-        isIncluded: true
-      },
-      search: {
-        groups: state.getGroupFilter()
-      }
-    });
+    // PropertySelector - solo campos necesarios (igual que Geotab)
+    var propertySelector = {
+      fields: ['id', 'name', 'groups'],
+      isIncluded: true
+    };
+    
+    // Search - con filtros (igual que Geotab)
+    var search = {
+      groups: state.getGroupFilter() || [{ id: 'GroupVehicleId' }]
+    };
+
+    console.log('[SYGIC] propertySelector:', JSON.stringify(propertySelector));
+    console.log('[SYGIC] search:', JSON.stringify(search));
+
+    var devices = await getDevices(propertySelector, search);
 
     console.timeEnd('[SYGIC] Device load time');
     console.log('[SYGIC] Loaded', devices.length, 'devices');
