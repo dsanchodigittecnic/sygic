@@ -213,34 +213,48 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   // PANEL DE DIAGNÓSTICO
   // ==========================================
   
-  function createDiagnosticPanel() {
-    var existing = document.getElementById('sygic-diagnostic-panel');
-    if (existing) {
-      existing.remove();
-    }
-    
-    var panel = document.createElement('div');
-    panel.id = 'sygic-diagnostic-panel';
-    panel.className = 'sygic-diagnostic-panel';
-    panel.innerHTML = 
-      '<div class="sygic-diagnostic-header">' +
-        '<h3>⏱️ Diagnóstico de Carga</h3>' +
-        '<button class="sygic-diagnostic-close">✕</button>' +
-      '</div>' +
-      '<div class="sygic-diagnostic-content">' +
-        '<div class="sygic-diagnostic-steps"></div>' +
-        '<div class="sygic-diagnostic-total"></div>' +
-      '</div>';
-    
-    elAddin.insertBefore(panel, elAddin.firstChild);
-    
-    var closeBtn = panel.querySelector('.sygic-diagnostic-close');
-    closeBtn.onclick = function() {
-      panel.remove();
-    };
-    
-    return panel;
+  // Modifica la función createDiagnosticPanel así:
+
+function createDiagnosticPanel() {
+  var existing = document.getElementById('sygic-diagnostic-panel');
+  if (existing) {
+    existing.remove();
   }
+  
+  var panel = document.createElement('div');
+  panel.id = 'sygic-diagnostic-panel';
+  panel.className = 'sygic-diagnostic-panel';
+  panel.innerHTML = 
+    '<div class="sygic-diagnostic-header">' +
+      '<h3>⏱️ Diagnóstico de Carga</h3>' +
+      '<button class="sygic-diagnostic-close">✕</button>' +
+    '</div>' +
+    '<div class="sygic-diagnostic-content">' +
+      '<div class="sygic-diagnostic-steps"></div>' +
+      '<div class="sygic-diagnostic-total"></div>' +
+    '</div>';
+  
+  // Intentar varios contenedores posibles
+  var container = elAddin || document.getElementById('mygeotabSygicPage');
+  if (container) {
+    // Insertar al principio del contenedor
+    if (container.firstChild) {
+      container.insertBefore(panel, container.firstChild);
+    } else {
+      container.appendChild(panel);
+    }
+  } else {
+    // Si no encontramos el contenedor, insertarlo en el body
+    document.body.insertBefore(panel, document.body.firstChild);
+  }
+  
+  var closeBtn = panel.querySelector('.sygic-diagnostic-close');
+  closeBtn.onclick = function() {
+    panel.remove();
+  };
+  
+  return panel;
+}
   
   function updateDiagnosticPanel(step, message, time, isComplete) {
     var panel = document.getElementById('sygic-diagnostic-panel');
