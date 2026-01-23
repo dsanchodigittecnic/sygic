@@ -209,6 +209,72 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     }
   }
 
+  // ==========================================
+  // PANEL DE DIAGNÓSTICO
+  // ==========================================
+  
+  function createDiagnosticPanel() {
+    var existing = document.getElementById('sygic-diagnostic-panel');
+    if (existing) {
+      existing.remove();
+    }
+    
+    var panel = document.createElement('div');
+    panel.id = 'sygic-diagnostic-panel';
+    panel.className = 'sygic-diagnostic-panel';
+    panel.innerHTML = 
+      '<div class="sygic-diagnostic-header">' +
+        '<h3>⏱️ Diagnóstico de Carga</h3>' +
+        '<button class="sygic-diagnostic-close">✕</button>' +
+      '</div>' +
+      '<div class="sygic-diagnostic-content">' +
+        '<div class="sygic-diagnostic-steps"></div>' +
+        '<div class="sygic-diagnostic-total"></div>' +
+      '</div>';
+    
+    elAddin.insertBefore(panel, elAddin.firstChild);
+    
+    var closeBtn = panel.querySelector('.sygic-diagnostic-close');
+    closeBtn.onclick = function() {
+      panel.remove();
+    };
+    
+    return panel;
+  }
+  
+  function updateDiagnosticPanel(step, message, time, isComplete) {
+    var panel = document.getElementById('sygic-diagnostic-panel');
+    if (!panel) return;
+    
+    var stepsContainer = panel.querySelector('.sygic-diagnostic-steps');
+    var totalContainer = panel.querySelector('.sygic-diagnostic-total');
+    
+    if (step === 'clear') {
+      stepsContainer.innerHTML = '';
+      totalContainer.innerHTML = '';
+      return;
+    }
+    
+    if (step === 'total') {
+      totalContainer.innerHTML = 
+        '<div class="sygic-diagnostic-step sygic-diagnostic-complete">' +
+          '<span class="sygic-diagnostic-icon">✅</span>' +
+          '<span class="sygic-diagnostic-label"><strong>' + message + '</strong></span>' +
+          '<span class="sygic-diagnostic-time">' + time + '</span>' +
+        '</div>';
+      return;
+    }
+    
+    var stepEl = document.createElement('div');
+    stepEl.className = 'sygic-diagnostic-step' + (isComplete ? ' sygic-diagnostic-complete' : '');
+    stepEl.innerHTML = 
+      '<span class="sygic-diagnostic-icon">' + (isComplete ? '✅' : '⏳') + '</span>' +
+      '<span class="sygic-diagnostic-label">' + message + '</span>' +
+      '<span class="sygic-diagnostic-time">' + (time || '') + '</span>';
+    
+    stepsContainer.appendChild(stepEl);
+  }
+
   function showLoading(show, message) {
     var list = document.getElementById('sygic-vehicle-list');
     if (show) {
@@ -389,7 +455,28 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       '.sygic-page-size{height:30px;border:1px solid #dadce0;border-radius:4px;' +
       'padding:0 8px;font-size:13px;cursor:pointer}' +
       '.sygic-page-size:focus{outline:none;border-color:#1a73e8}' +
-      '.sygic-paginator-right label{color:#5f6368;font-size:13px;margin-right:6px}';
+      '.sygic-paginator-right label{color:#5f6368;font-size:13px;margin-right:6px}' +
+      
+      // Estilos del panel de diagnóstico
+      '.sygic-diagnostic-panel{background:#fff;border:2px solid #1a73e8;border-radius:8px;' +
+      'margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}' +
+      '.sygic-diagnostic-header{display:flex;justify-content:space-between;align-items:center;' +
+      'padding:12px 16px;background:#1a73e8;color:#fff;border-radius:6px 6px 0 0}' +
+      '.sygic-diagnostic-header h3{margin:0;font-size:16px;font-weight:600}' +
+      '.sygic-diagnostic-close{background:transparent;border:none;color:#fff;' +
+      'font-size:20px;cursor:pointer;width:24px;height:24px;display:flex;' +
+      'align-items:center;justify-content:center;border-radius:4px}' +
+      '.sygic-diagnostic-close:hover{background:rgba(255,255,255,0.2)}' +
+      '.sygic-diagnostic-content{padding:16px}' +
+      '.sygic-diagnostic-steps{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}' +
+      '.sygic-diagnostic-step{display:flex;align-items:center;gap:12px;padding:8px 12px;' +
+      'background:#f8f9fa;border-radius:4px;font-size:14px}' +
+      '.sygic-diagnostic-step.sygic-diagnostic-complete{background:#e8f5e9}' +
+      '.sygic-diagnostic-icon{font-size:18px;min-width:24px}' +
+      '.sygic-diagnostic-label{flex:1}' +
+      '.sygic-diagnostic-time{color:#5f6368;font-weight:600;font-family:monospace}' +
+      '.sygic-diagnostic-total{padding:12px;background:#e3f2fd;border-radius:4px;' +
+      'border-left:4px solid #1a73e8;font-weight:600}';
 
     document.head.appendChild(style);
   }
@@ -399,15 +486,16 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   // ==========================================
 
   async function loadGroups() {
-    console.log('[SYGIC] [1/5] Loading Groups...');
-    console.time('[SYGIC] Groups');
+    var startTime = performance.now();
+    updateDiagnosticPanel('step1', '[1/5] Cargando grupos...', null, false);
     
     var groups = await new Promise(function(resolve, reject) {
       api.call('Get', { typeName: 'Group' }, resolve, reject);
     });
     
-    console.timeEnd('[SYGIC] Groups');
-    console.log('[SYGIC] Groups loaded:', groups.length);
+    var endTime = performance.now();
+    var time = ((endTime - startTime) / 1000).toFixed(2) + 's';
+    updateDiagnosticPanel('step1', '[1/5] Grupos: ' + groups.length + ' cargados', time, true);
     
     groupMap = {};
     groups.forEach(function(g) {
@@ -418,33 +506,36 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   }
 
   async function loadDimensions() {
-    console.log('[SYGIC] [2/5] Loading Dimensions...');
-    console.time('[SYGIC] Dimensions');
+    var startTime = performance.now();
+    updateDiagnosticPanel('step2', '[2/5] Cargando dimensiones...', null, false);
     
     var dimensions = await storage.getAllDimensionsModelsAsync();
     
-    console.timeEnd('[SYGIC] Dimensions');
-    console.log('[SYGIC] Dimensions loaded:', Object.keys(dimensions || {}).length);
+    var endTime = performance.now();
+    var time = ((endTime - startTime) / 1000).toFixed(2) + 's';
+    var count = Object.keys(dimensions || {}).length;
+    updateDiagnosticPanel('step2', '[2/5] Dimensiones: ' + count + ' cargadas', time, true);
     
     allDimensions = dimensions;
     return dimensions;
   }
 
   async function loadSession() {
-    console.log('[SYGIC] [3/5] Loading Session...');
-    console.time('[SYGIC] Session');
+    var startTime = performance.now();
+    updateDiagnosticPanel('step3', '[3/5] Cargando sesión...', null, false);
     
     var session = await geotabApi.getSessionAsync();
     
-    console.timeEnd('[SYGIC] Session');
-    console.log('[SYGIC] Session user:', session.userName);
+    var endTime = performance.now();
+    var time = ((endTime - startTime) / 1000).toFixed(2) + 's';
+    updateDiagnosticPanel('step3', '[3/5] Sesión: ' + session.userName, time, true);
     
     return session;
   }
 
   async function loadUser(userName) {
-    console.log('[SYGIC] [4/5] Loading User...');
-    console.time('[SYGIC] User');
+    var startTime = performance.now();
+    updateDiagnosticPanel('step4', '[4/5] Cargando usuario...', null, false);
     
     var users = await new Promise(function(resolve, reject) {
       api.call('Get', { 
@@ -460,15 +551,17 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       }, resolve, reject);
     });
     
-    console.timeEnd('[SYGIC] User');
+    var endTime = performance.now();
+    var time = ((endTime - startTime) / 1000).toFixed(2) + 's';
+    updateDiagnosticPanel('step4', '[4/5] Usuario cargado: ' + userName, time, true);
     
     currentUser = new User(users[0], clearances);
     return currentUser;
   }
 
   async function loadDevices() {
-    console.log('[SYGIC] [5/5] Loading Devices...');
-    console.time('[SYGIC] Devices TOTAL');
+    var startTime = performance.now();
+    updateDiagnosticPanel('step5', '[5/5] Cargando dispositivos...', null, false);
     
     var propertySelector = {
       fields: ['id', 'name', 'groups'],
@@ -479,10 +572,6 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       groups: state.getGroupFilter()
     };
     
-    console.log('[SYGIC] Device search params:', JSON.stringify(search));
-    console.log('[SYGIC] Device propertySelector:', JSON.stringify(propertySelector));
-    
-    console.time('[SYGIC] Devices API call');
     var devices = await new Promise(function(resolve, reject) {
       api.call('Get', {
         typeName: 'Device',
@@ -490,19 +579,16 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         search: search
       }, resolve, reject);
     });
-    console.timeEnd('[SYGIC] Devices API call');
     
-    console.log('[SYGIC] Devices returned:', devices.length);
-    
-    console.time('[SYGIC] Devices processing');
     devices.forEach(function(device) {
       device.groups.forEach(function(g) {
         g.name = groupMap[g.id] || g.id;
       });
     });
-    console.timeEnd('[SYGIC] Devices processing');
     
-    console.timeEnd('[SYGIC] Devices TOTAL');
+    var endTime = performance.now();
+    var time = ((endTime - startTime) / 1000).toFixed(2) + 's';
+    updateDiagnosticPanel('step5', '[5/5] Dispositivos: ' + devices.length + ' cargados', time, true);
     
     allDevices = devices;
     totalPages = Math.ceil(allDevices.length / PAGE_SIZE);
@@ -513,10 +599,6 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   return {
     initialize: async function(freshApi, freshState, initializeCallback) {
-      console.log('[SYGIC] ==========================================');
-      console.log('[SYGIC] INITIALIZING');
-      console.log('[SYGIC] ==========================================');
-      
       if (freshState.translate) {
         freshState.translate(elAddin || '');
       }
@@ -526,38 +608,31 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     },
 
     focus: async function() {
-      console.log('[SYGIC] ==========================================');
-      console.log('[SYGIC] FOCUS - Starting load sequence');
-      console.log('[SYGIC] ==========================================');
-      console.time('[SYGIC] TOTAL LOAD TIME');
+      var totalStartTime = performance.now();
       
       elAddin.className = '';
-      showLoading(true, 'Loading groups...');
+      createDiagnosticPanel();
+      updateDiagnosticPanel('clear');
+      showLoading(true, 'Cargando...');
 
       try {
-        // Paso 1: Groups
         await loadGroups();
-        showLoading(true, 'Loading dimensions...');
+        showLoading(true, 'Cargando dimensiones...');
         
-        // Paso 2: Dimensions
         await loadDimensions();
-        showLoading(true, 'Loading session...');
+        showLoading(true, 'Cargando sesión...');
         
-        // Paso 3: Session
         var session = await loadSession();
-        showLoading(true, 'Loading user...');
+        showLoading(true, 'Cargando usuario...');
         
-        // Paso 4: User
         await loadUser(session.userName);
-        showLoading(true, 'Loading devices...');
+        showLoading(true, 'Cargando dispositivos...');
         
-        // Paso 5: Devices
         await loadDevices();
         
-        console.timeEnd('[SYGIC] TOTAL LOAD TIME');
-        console.log('[SYGIC] ==========================================');
-        console.log('[SYGIC] LOAD COMPLETE');
-        console.log('[SYGIC] ==========================================');
+        var totalEndTime = performance.now();
+        var totalTime = ((totalEndTime - totalStartTime) / 1000).toFixed(2) + 's';
+        updateDiagnosticPanel('total', 'CARGA COMPLETA', totalTime, true);
         
         createPaginator();
         renderCurrentPage();
@@ -570,12 +645,16 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     },
 
     blur: function() {
-      console.log('[SYGIC] BLUR');
       elAddin.className += ' hidden';
       
       var paginator = document.getElementById('sygic-paginator');
       if (paginator) {
         paginator.remove();
+      }
+      
+      var diagnostic = document.getElementById('sygic-diagnostic-panel');
+      if (diagnostic) {
+        diagnostic.remove();
       }
       
       allDevices = [];
