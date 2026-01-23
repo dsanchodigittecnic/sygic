@@ -13,6 +13,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   var elAddin = document.getElementById('mygeotabSygicPage');
   
   var allDevices = [];
+  var filteredDevices = [];
   var allDimensions = null;
   var currentUser = null;
   var storage = null;
@@ -214,14 +215,90 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     }
   }
 
-  function renderAllDevices() {
+  function createSearchBar() {
+    var existing = document.getElementById('sygic-search-bar');
+    if (existing) {
+      existing.remove();
+    }
+
+    var searchBar = document.createElement('div');
+    searchBar.id = 'sygic-search-bar';
+    searchBar.className = 'sygic-search-bar';
+    searchBar.innerHTML = 
+      '<div class="sygic-search-container">' +
+        '<svg class="sygic-search-icon" viewBox="0 0 24 24" width="20" height="20">' +
+          '<path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>' +
+        '</svg>' +
+        '<input type="text" id="sygic-search-input" class="sygic-search-input" placeholder="Buscar por nombre de vehículo...">' +
+        '<button id="sygic-search-clear" class="sygic-search-clear hidden">✕</button>' +
+        '<span class="sygic-search-results"></span>' +
+      '</div>';
+
+    var listContainer = document.querySelector('.checkmateListBuilder');
+    if (listContainer) {
+      listContainer.parentNode.insertBefore(searchBar, listContainer);
+    }
+
+    var searchInput = searchBar.querySelector('#sygic-search-input');
+    var clearBtn = searchBar.querySelector('#sygic-search-clear');
+    var resultsSpan = searchBar.querySelector('.sygic-search-results');
+
+    var searchTimeout;
+    searchInput.oninput = function() {
+      clearTimeout(searchTimeout);
+      var query = this.value.trim();
+      
+      if (query.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+
+      searchTimeout = setTimeout(function() {
+        filterDevices(query);
+      }, 300);
+    };
+
+    clearBtn.onclick = function() {
+      searchInput.value = '';
+      clearBtn.classList.add('hidden');
+      filterDevices('');
+      searchInput.focus();
+    };
+
+    function filterDevices(query) {
+      if (!query) {
+        filteredDevices = allDevices;
+        resultsSpan.textContent = allDevices.length + ' vehículos';
+      } else {
+        var lowerQuery = query.toLowerCase();
+        filteredDevices = allDevices.filter(function(device) {
+          return device.name.toLowerCase().indexOf(lowerQuery) !== -1;
+        });
+        resultsSpan.textContent = filteredDevices.length + ' de ' + allDevices.length + ' vehículos';
+      }
+      renderDevices();
+    }
+
+    // Inicializar con todos los dispositivos
+    filteredDevices = allDevices;
+    resultsSpan.textContent = allDevices.length + ' vehículos';
+  }
+
+  function renderDevices() {
     var list = document.getElementById('sygic-vehicle-list');
     list.innerHTML = '';
+
+    if (filteredDevices.length === 0) {
+      list.innerHTML = '<li style="text-align:center;padding:40px;list-style:none;color:#5f6368;">' +
+        'No se encontraron vehículos</li>';
+      return;
+    }
 
     var fragment = document.createDocumentFragment();
     var tempDiv = document.createElement('div');
 
-    allDevices.forEach(function(device) {
+    filteredDevices.forEach(function(device) {
       tempDiv.innerHTML = createDeviceHTML(device);
       var li = tempDiv.firstElementChild;
       var row = li.querySelector('.sygic-vehicle');
@@ -249,7 +326,23 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       '.sygic-spinner{width:24px;height:24px;border:3px solid #e0e0e0;' +
       'border-top-color:#1a73e8;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}' +
       '@keyframes spin{to{transform:rotate(360deg)}}' +
-      '#sygic-vehicle-list{padding:0;margin:0}';
+      '#sygic-vehicle-list{padding:0;margin:0}' +
+      
+      '.sygic-search-bar{padding:16px;background:#fff;border-bottom:1px solid #e0e0e0}' +
+      '.sygic-search-container{display:flex;align-items:center;gap:12px;max-width:600px;' +
+      'margin:0 auto;position:relative}' +
+      '.sygic-search-icon{color:#5f6368;flex-shrink:0}' +
+      '.sygic-search-input{flex:1;height:40px;padding:0 40px 0 12px;border:1px solid #dadce0;' +
+      'border-radius:20px;font-size:14px;outline:none;transition:all .2s}' +
+      '.sygic-search-input:focus{border-color:#1a73e8;box-shadow:0 1px 6px rgba(26,115,232,0.3)}' +
+      '.sygic-search-clear{position:absolute;right:120px;background:transparent;border:none;' +
+      'color:#5f6368;font-size:18px;cursor:pointer;width:24px;height:24px;' +
+      'display:flex;align-items:center;justify-content:center;border-radius:50%;' +
+      'transition:all .2s}' +
+      '.sygic-search-clear:hover{background:#f1f3f4;color:#202124}' +
+      '.sygic-search-clear.hidden{display:none}' +
+      '.sygic-search-results{color:#5f6368;font-size:13px;white-space:nowrap;min-width:100px;' +
+      'text-align:right}';
 
     document.head.appendChild(style);
   }
@@ -326,6 +419,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     });
     
     allDevices = devices;
+    filteredDevices = devices;
     return devices;
   }
 
@@ -350,7 +444,8 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         await loadUser(session.userName);
         await loadDevices();
         
-        renderAllDevices();
+        createSearchBar();
+        renderDevices();
         
       } catch (error) {
         console.error('[SYGIC] ERROR:', error);
@@ -361,7 +456,14 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
     blur: function() {
       elAddin.className += ' hidden';
+      
+      var searchBar = document.getElementById('sygic-search-bar');
+      if (searchBar) {
+        searchBar.remove();
+      }
+      
       allDevices = [];
+      filteredDevices = [];
     }
   };
 };
