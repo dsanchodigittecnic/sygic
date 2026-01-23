@@ -22,7 +22,8 @@
   "dev": {
     "root": "mygeotabSygicPage",
     "dist": {
-      "host": "https://cdn.jsdelivr.net/gh/sygic/geotab@__VERSION__/mygeotab-sygic-page/dist/"
+      "host": "https://dsanchodigittecnic.github.io/sygic/geotab//mygeotab-sygic-page/dist/"
     }
   }
 }
+
