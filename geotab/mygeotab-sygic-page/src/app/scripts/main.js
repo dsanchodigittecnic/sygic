@@ -215,6 +215,22 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     }
   }
 
+  function showNotificationBanner(message, type) {
+    var banner = document.getElementById('sygic-notification-banner');
+    if (!banner) return;
+    
+    banner.textContent = message;
+    banner.className = 'sygic-notification-banner sygic-notification-' + type;
+    
+    // Ocultar después de 5 segundos
+    setTimeout(function() {
+      banner.classList.add('sygic-notification-fade-out');
+      setTimeout(function() {
+        banner.className = 'sygic-notification-banner hidden';
+      }, 300);
+    }, 5000);
+  }
+
   function createSearchBar() {
     var existing = document.getElementById('sygic-search-bar');
     if (existing) {
@@ -232,7 +248,15 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         '<input type="text" id="sygic-search-input" class="sygic-search-input" placeholder="Buscar por nombre de vehículo...">' +
         '<button id="sygic-search-clear" class="sygic-search-clear hidden">✕</button>' +
         '<span class="sygic-search-results"></span>' +
-      '</div>';
+        '<button id="sygic-update-routes" class="sygic-update-routes-btn">' +
+          '<svg class="sygic-refresh-icon" viewBox="0 0 24 24" width="18" height="18">' +
+            '<path fill="currentColor" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>' +
+          '</svg>' +
+          '<span class="sygic-btn-text">Actualizar rutas</span>' +
+          '<div class="sygic-btn-spinner hidden"></div>' +
+        '</button>' +
+      '</div>' +
+      '<div id="sygic-notification-banner" class="sygic-notification-banner hidden"></div>';
 
     var listContainer = document.querySelector('.checkmateListBuilder');
     if (listContainer) {
@@ -242,6 +266,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     var searchInput = searchBar.querySelector('#sygic-search-input');
     var clearBtn = searchBar.querySelector('#sygic-search-clear');
     var resultsSpan = searchBar.querySelector('.sygic-search-results');
+    var updateRoutesBtn = searchBar.querySelector('#sygic-update-routes');
 
     var searchTimeout;
     searchInput.oninput = function() {
@@ -264,6 +289,37 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       clearBtn.classList.add('hidden');
       filterDevices('');
       searchInput.focus();
+    };
+
+    updateRoutesBtn.onclick = async function() {
+      var btnText = updateRoutesBtn.querySelector('.sygic-btn-text');
+      var btnIcon = updateRoutesBtn.querySelector('.sygic-refresh-icon');
+      var btnSpinner = updateRoutesBtn.querySelector('.sygic-btn-spinner');
+      
+      // Deshabilitar botón y mostrar spinner
+      updateRoutesBtn.disabled = true;
+      btnText.classList.add('hidden');
+      btnIcon.classList.add('hidden');
+      btnSpinner.classList.remove('hidden');
+
+      try {
+        var response = await fetch('http://localhost/sygic/cron/');
+        
+        if (response.ok) {
+          showNotificationBanner('Rutas actualizadas correctamente', 'success');
+        } else {
+          showNotificationBanner('Error al actualizar las rutas', 'error');
+        }
+      } catch (error) {
+        console.error('[SYGIC] Error updating routes:', error);
+        showNotificationBanner('Error de conexión al actualizar las rutas', 'error');
+      } finally {
+        // Restaurar botón
+        updateRoutesBtn.disabled = false;
+        btnText.classList.remove('hidden');
+        btnIcon.classList.remove('hidden');
+        btnSpinner.classList.add('hidden');
+      }
     };
 
     function filterDevices(query) {
@@ -329,20 +385,37 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       '#sygic-vehicle-list{padding:0;margin:0}' +
       
       '.sygic-search-bar{padding:16px;background:#fff;border-bottom:1px solid #e0e0e0}' +
-      '.sygic-search-container{display:flex;align-items:center;gap:12px;max-width:600px;' +
+      '.sygic-search-container{display:flex;align-items:center;gap:12px;max-width:900px;' +
       'margin:0 auto;position:relative}' +
       '.sygic-search-icon{color:#5f6368;flex-shrink:0}' +
       '.sygic-search-input{flex:1;height:40px;padding:0 40px 0 12px;border:1px solid #dadce0;' +
       'border-radius:20px;font-size:14px;outline:none;transition:all .2s}' +
       '.sygic-search-input:focus{border-color:#1a73e8;box-shadow:0 1px 6px rgba(26,115,232,0.3)}' +
-      '.sygic-search-clear{position:absolute;right:120px;background:transparent;border:none;' +
+      '.sygic-search-clear{position:absolute;right:280px;background:transparent;border:none;' +
       'color:#5f6368;font-size:18px;cursor:pointer;width:24px;height:24px;' +
       'display:flex;align-items:center;justify-content:center;border-radius:50%;' +
       'transition:all .2s}' +
       '.sygic-search-clear:hover{background:#f1f3f4;color:#202124}' +
       '.sygic-search-clear.hidden{display:none}' +
       '.sygic-search-results{color:#5f6368;font-size:13px;white-space:nowrap;min-width:100px;' +
-      'text-align:right}';
+      'text-align:right}' +
+      
+      '.sygic-update-routes-btn{display:flex;align-items:center;gap:8px;height:40px;' +
+      'padding:0 16px;background:#1a73e8;color:#fff;border:none;border-radius:20px;' +
+      'font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}' +
+      '.sygic-update-routes-btn:hover:not(:disabled){background:#1557b0;box-shadow:0 1px 3px rgba(0,0,0,0.2)}' +
+      '.sygic-update-routes-btn:disabled{opacity:0.6;cursor:not-allowed}' +
+      '.sygic-refresh-icon{flex-shrink:0}' +
+      '.sygic-btn-spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);' +
+      'border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}' +
+      '.sygic-btn-text{line-height:1}' +
+      
+      '.sygic-notification-banner{padding:12px 20px;margin:0 16px 0 16px;border-radius:4px;' +
+      'font-size:14px;font-weight:500;text-align:center;transition:opacity .3s}' +
+      '.sygic-notification-banner.hidden{display:none}' +
+      '.sygic-notification-success{background:#e6f4ea;color:#137333;border:1px solid #b7e1cd}' +
+      '.sygic-notification-error{background:#fce8e6;color:#c5221f;border:1px solid #f4c7c3}' +
+      '.sygic-notification-fade-out{opacity:0}';
 
     document.head.appendChild(style);
   }
