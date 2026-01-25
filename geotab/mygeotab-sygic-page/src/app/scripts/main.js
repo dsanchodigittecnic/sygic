@@ -18,6 +18,9 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
   var currentUser = null;
   var storage = null;
   var groupMap = {};
+  var vehicleModelsCache = {};
+  var currentSearchQuery = '';
+  var currentModelFilter = '';
 
   var geotabApi = ApiWrapper(api);
 
@@ -27,6 +30,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         '<div class="g-main g-main-col g-main_wider">' +
           '<div class="g-name"><span class="ellipsis"><%= vehicle.name %></span></div>' +
           '<div class="g-comment"><div class="secondaryData ellipsis"><%= vehicle_groups_string %></div></div>' +
+          '<div class="g-comment"><div class="secondaryData ellipsis"><%= vehicle_model_string %></div></div>' +
           '<div class="g-comment vehicle-dimensions-comment"><div class="secondaryData ellipsis"><%= vehicle_dimensions_string %></div></div>' +
         '</div>' +
         '<div class="g-ctrl">' +
@@ -88,6 +92,96 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   var compiledTemplate = _.template(templateString);
 
+  function getVehicleModel(device) {
+    if (!device.vehicleIdentificationNumber) {
+      return 'Sin VIN';
+    }
+    
+    var cached = vehicleModelsCache[device.vehicleIdentificationNumber];
+    if (cached) {
+      return cached.make + ' ' + cached.model;
+    }
+    
+    return 'Cargando...';
+  }
+
+  function getUniqueModels() {
+    var models = {};
+    
+    for (var vin in vehicleModelsCache) {
+      if (vehicleModelsCache.hasOwnProperty(vin)) {
+        var info = vehicleModelsCache[vin];
+        if (info.make && info.model) {
+          var modelKey = info.make + ' ' + info.model;
+          models[modelKey] = true;
+        }
+      }
+    }
+    
+    var uniqueModels = Object.keys(models).sort();
+    return uniqueModels;
+  }
+
+  async function decodeVins(devices) {
+    var vins = devices
+      .filter(function(device) {
+        return device.vehicleIdentificationNumber && 
+               !vehicleModelsCache[device.vehicleIdentificationNumber];
+      })
+      .map(function(device) {
+        return device.vehicleIdentificationNumber;
+      });
+
+    if (vins.length === 0) {
+      return;
+    }
+
+    // Procesar en lotes de 50 VINs para no sobrecargar la API
+    var batchSize = 50;
+    for (var i = 0; i < vins.length; i += batchSize) {
+      var batch = vins.slice(i, i + batchSize);
+      
+      try {
+        var result = await new Promise(function(resolve, reject) {
+          api.call('DecodeVinsNew', {
+            vins: batch
+          }, resolve, reject);
+        });
+
+        result.forEach(function(vinInfo) {
+          if (vinInfo.error === 'None' || !vinInfo.error) {
+            vehicleModelsCache[vinInfo.vin] = {
+              make: vinInfo.make || 'Desconocido',
+              model: vinInfo.model || 'Desconocido',
+              vehicleType: vinInfo.vehicleType,
+              manufacturer: vinInfo.manufacturer
+            };
+          } else {
+            vehicleModelsCache[vinInfo.vin] = {
+              make: 'Error',
+              model: 'decodificación',
+              vehicleType: null,
+              manufacturer: null
+            };
+          }
+        });
+      } catch (error) {
+        console.error('[SYGIC] Error decoding VINs batch:', error);
+        // Marcar VINs fallidos para no intentar nuevamente
+        batch.forEach(function(vin) {
+          if (!vehicleModelsCache[vin]) {
+            vehicleModelsCache[vin] = {
+              make: 'Error',
+              model: 'API',
+              vehicleType: null,
+              manufacturer: null
+            };
+          }
+        });
+      }
+    }
+  }
+
   function getDimensionsString(viewModel) {
     var parts = [];
     for (var key in viewModel) {
@@ -143,10 +237,13 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       .map(function(g) { return g.name || groupMap[g.id] || g.id; })
       .join(', ');
 
+    var modelString = 'Modelo: ' + getVehicleModel(device);
+
     return compiledTemplate({
       vehicle: device,
       vehicle_dimensions_string: dimensionDetailsString,
       vehicle_groups_string: groupNames,
+      vehicle_model_string: modelString,
       vehicle_dimensions: dimensionsTemplateObject,
       vehicle_hazmat: hazmatTemplateObject,
       user: currentUser,
@@ -240,6 +337,13 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     var searchBar = document.createElement('div');
     searchBar.id = 'sygic-search-bar';
     searchBar.className = 'sygic-search-bar';
+    
+    var uniqueModels = getUniqueModels();
+    var modelOptions = '<option value="">Todos los modelos</option>';
+    uniqueModels.forEach(function(model) {
+      modelOptions += '<option value="' + model + '">' + model + '</option>';
+    });
+
     searchBar.innerHTML = 
       '<div class="sygic-search-container">' +
         '<svg class="sygic-search-icon" viewBox="0 0 24 24" width="20" height="20">' +
@@ -247,6 +351,9 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         '</svg>' +
         '<input type="text" id="sygic-search-input" class="sygic-search-input" placeholder="Buscar por nombre de vehículo...">' +
         '<button id="sygic-search-clear" class="sygic-search-clear hidden">✕</button>' +
+        '<select id="sygic-model-filter" class="sygic-model-filter">' +
+          modelOptions +
+        '</select>' +
         '<span class="sygic-search-results"></span>' +
         '<button id="sygic-update-routes" class="sygic-update-routes-btn">' +
           '<svg class="sygic-refresh-icon" viewBox="0 0 24 24" width="18" height="18">' +
@@ -267,11 +374,13 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
     var clearBtn = searchBar.querySelector('#sygic-search-clear');
     var resultsSpan = searchBar.querySelector('.sygic-search-results');
     var updateRoutesBtn = searchBar.querySelector('#sygic-update-routes');
+    var modelFilter = searchBar.querySelector('#sygic-model-filter');
 
     var searchTimeout;
     searchInput.oninput = function() {
       clearTimeout(searchTimeout);
       var query = this.value.trim();
+      currentSearchQuery = query;
       
       if (query.length > 0) {
         clearBtn.classList.remove('hidden');
@@ -280,15 +389,21 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       }
 
       searchTimeout = setTimeout(function() {
-        filterDevices(query);
+        applyFilters();
       }, 300);
     };
 
     clearBtn.onclick = function() {
       searchInput.value = '';
+      currentSearchQuery = '';
       clearBtn.classList.add('hidden');
-      filterDevices('');
+      applyFilters();
       searchInput.focus();
+    };
+
+    modelFilter.onchange = function() {
+      currentModelFilter = this.value;
+      applyFilters();
     };
 
     updateRoutesBtn.onclick = async function() {
@@ -322,17 +437,32 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       }
     };
 
-    function filterDevices(query) {
-      if (!query) {
-        filteredDevices = allDevices;
-        resultsSpan.textContent = allDevices.length + ' vehículos';
+    function applyFilters() {
+      filteredDevices = allDevices.filter(function(device) {
+        var matchesSearch = true;
+        var matchesModel = true;
+
+        // Filtro de búsqueda por nombre
+        if (currentSearchQuery) {
+          var lowerQuery = currentSearchQuery.toLowerCase();
+          matchesSearch = device.name.toLowerCase().indexOf(lowerQuery) !== -1;
+        }
+
+        // Filtro por modelo
+        if (currentModelFilter) {
+          matchesModel = getVehicleModel(device) === currentModelFilter;
+        }
+
+        return matchesSearch && matchesModel;
+      });
+
+      var totalText = allDevices.length + ' vehículos';
+      if (filteredDevices.length !== allDevices.length) {
+        resultsSpan.textContent = filteredDevices.length + ' de ' + totalText;
       } else {
-        var lowerQuery = query.toLowerCase();
-        filteredDevices = allDevices.filter(function(device) {
-          return device.name.toLowerCase().indexOf(lowerQuery) !== -1;
-        });
-        resultsSpan.textContent = filteredDevices.length + ' de ' + allDevices.length + ' vehículos';
+        resultsSpan.textContent = totalText;
       }
+      
       renderDevices();
     }
 
@@ -385,18 +515,25 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       '#sygic-vehicle-list{padding:0;margin:0}' +
       
       '.sygic-search-bar{padding:16px;background:#fff;border-bottom:1px solid #e0e0e0}' +
-      '.sygic-search-container{display:flex;align-items:center;gap:12px;max-width:900px;' +
+      '.sygic-search-container{display:flex;align-items:center;gap:12px;max-width:1100px;' +
       'margin:0 auto;position:relative}' +
       '.sygic-search-icon{color:#5f6368;flex-shrink:0}' +
       '.sygic-search-input{flex:1;height:40px;padding:0 40px 0 12px;border:1px solid #dadce0;' +
       'border-radius:20px;font-size:14px;outline:none;transition:all .2s}' +
       '.sygic-search-input:focus{border-color:#1a73e8;box-shadow:0 1px 6px rgba(26,115,232,0.3)}' +
-      '.sygic-search-clear{position:absolute;right:280px;background:transparent;border:none;' +
+      '.sygic-search-clear{position:absolute;right:480px;background:transparent;border:none;' +
       'color:#5f6368;font-size:18px;cursor:pointer;width:24px;height:24px;' +
       'display:flex;align-items:center;justify-content:center;border-radius:50%;' +
       'transition:all .2s}' +
       '.sygic-search-clear:hover{background:#f1f3f4;color:#202124}' +
       '.sygic-search-clear.hidden{display:none}' +
+      
+      '.sygic-model-filter{height:40px;padding:0 12px;border:1px solid #dadce0;' +
+      'border-radius:20px;font-size:14px;outline:none;background:#fff;cursor:pointer;' +
+      'transition:all .2s;min-width:180px}' +
+      '.sygic-model-filter:focus{border-color:#1a73e8;box-shadow:0 1px 6px rgba(26,115,232,0.3)}' +
+      '.sygic-model-filter:hover{border-color:#b0b0b0}' +
+      
       '.sygic-search-results{color:#5f6368;font-size:13px;white-space:nowrap;min-width:100px;' +
       'text-align:right}' +
       
@@ -469,7 +606,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
   async function loadDevices() {
     var propertySelector = {
-      fields: ['id', 'name', 'groups'],
+      fields: ['id', 'name', 'groups', 'vehicleIdentificationNumber'],
       isIncluded: true
     };
     
@@ -508,7 +645,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
 
     focus: async function() {
       elAddin.className = '';
-      showLoading(true, 'Loading...');
+      showLoading(true, 'Cargando vehículos...');
 
       try {
         await loadGroups();
@@ -516,6 +653,9 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
         var session = await loadSession();
         await loadUser(session.userName);
         await loadDevices();
+        
+        showLoading(true, 'Decodificando VINs...');
+        await decodeVins(allDevices);
         
         createSearchBar();
         renderDevices();
@@ -537,6 +677,8 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       
       allDevices = [];
       filteredDevices = [];
+      currentSearchQuery = '';
+      currentModelFilter = '';
     }
   };
 };
