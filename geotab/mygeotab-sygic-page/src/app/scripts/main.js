@@ -418,7 +418,7 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       btnSpinner.classList.remove('hidden');
 
       try {
-        var response = await fetch('http://localhost/sygic/cron/');
+        var response = await fetch('https://iberotrack.com/sygic/');
         
         if (response.ok) {
           showNotificationBanner('Rutas actualizadas correctamente', 'success');
