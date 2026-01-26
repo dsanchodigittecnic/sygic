@@ -418,7 +418,8 @@ geotab.addin.mygeotabSygicPage = function (api, state) {
       btnSpinner.classList.remove('hidden');
 
       try {
-        var response = await fetch('https://iberotrack.com/sygic/');
+        var url = 'https://iberotrack.com/sygic/?t=' + Date.now();
+        var response = await fetch(url);
         
         if (response.ok) {
           showNotificationBanner('Rutas actualizadas correctamente', 'success');
