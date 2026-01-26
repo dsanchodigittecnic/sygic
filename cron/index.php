@@ -1,9 +1,38 @@
 <?php
 
-/**
- * Script para recuperar Routes de Geotab y exportar en formato polygon/stations
- * con coordenadas UTM
- */
+// ============================================
+// ANTI-CACHÉ: Redirección automática con timestamp
+// ============================================
+/* if (!isset($_GET['_nc'])) {
+    header('Location: ' . $_SERVER['PHP_SELF'] . '?_nc=' . time());
+    exit();
+}*/
+
+// ============================================
+// DESACTIVAR CACHÉ HTTP
+// ============================================
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+
+// ============================================
+// CORS HEADERS
+// ============================================
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, t');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+header('Content-Type: application/json; charset=utf-8');
+
+// Limpiar caché de archivos
+clearstatcache(true);
+
+// ============================================
+// CLASES Y FUNCIONES
+// ============================================
 
 class GeotabAPI {
     private string $server;
@@ -87,41 +116,27 @@ class GeotabAPI {
     }
 }
 
-/**
- * Convierte coordenadas WGS84 (lat/lon) a UTM
- * 
- * @param float $lat Latitud en grados decimales
- * @param float $lon Longitud en grados decimales
- * @param int|null $forceZone Forzar zona UTM (opcional)
- * @return array ['x' => easting, 'y' => northing, 'zone' => zona]
- */
 function latLonToUTM(float $lat, float $lon, ?int $forceZone = null): array {
-    // Constantes WGS84
-    $a = 6378137.0;           // Radio ecuatorial
-    $f = 1 / 298.257223563;   // Aplanamiento
-    $k0 = 0.9996;             // Factor de escala
+    $a = 6378137.0;
+    $f = 1 / 298.257223563;
+    $k0 = 0.9996;
     
-    $e2 = 2 * $f - $f * $f;   // Excentricidad al cuadrado
+    $e2 = 2 * $f - $f * $f;
     $e4 = $e2 * $e2;
     $e6 = $e4 * $e2;
-    $ep2 = $e2 / (1 - $e2);   // Segunda excentricidad al cuadrado
+    $ep2 = $e2 / (1 - $e2);
     
-    // Calcular zona UTM
     if ($forceZone !== null) {
         $zone = $forceZone;
     } else {
         $zone = (int) floor(($lon + 180) / 6) + 1;
-        
-        // Ajustes especiales para Noruega y Svalbard
         if ($lat >= 56 && $lat < 64 && $lon >= 3 && $lon < 12) {
             $zone = 32;
         }
     }
     
-    // Meridiano central de la zona
     $lon0 = ($zone - 1) * 6 - 180 + 3;
     
-    // Convertir a radianes
     $latRad = deg2rad($lat);
     $lonRad = deg2rad($lon);
     $lon0Rad = deg2rad($lon0);
@@ -142,7 +157,7 @@ function latLonToUTM(float $lat, float $lon, ?int $forceZone = null): array {
         $A 
         + (1 - $T + $C) * pow($A, 3) / 6
         + (5 - 18*$T + $T*$T + 72*$C - 58*$ep2) * pow($A, 5) / 120
-    ) + 500000; // False easting
+    ) + 500000;
     
     $y = $k0 * (
         $M + $N * tan($latRad) * (
@@ -152,9 +167,8 @@ function latLonToUTM(float $lat, float $lon, ?int $forceZone = null): array {
         )
     );
     
-    // Ajuste para hemisferio sur
     if ($lat < 0) {
-        $y += 10000000; // False northing
+        $y += 10000000;
     }
     
     return [
@@ -164,9 +178,6 @@ function latLonToUTM(float $lat, float $lon, ?int $forceZone = null): array {
     ];
 }
 
-/**
- * Genera el JSON en formato polygon/stations
- */
 function generateRoutePolygonJSON(array $waypoints, ?int $utmZone = null): array {
     $points = [];
     $stations = [];
@@ -182,7 +193,6 @@ function generateRoutePolygonJSON(array $waypoints, ?int $utmZone = null): array
                 $utmZone ?? $detectedZone
             );
             
-            // Guardar la zona del primer punto para mantener consistencia
             if ($detectedZone === null) {
                 $detectedZone = $utm['zone'];
             }
@@ -192,7 +202,6 @@ function generateRoutePolygonJSON(array $waypoints, ?int $utmZone = null): array
                 'y' => $utm['y']
             ];
             
-            // Determinar tipo de waypoint
             $waypointType = 'VIA';
             if ($index === 0) {
                 $waypointType = 'START';
@@ -222,33 +231,61 @@ function generateRoutePolygonJSON(array $waypoints, ?int $utmZone = null): array
     ];
 }
 
-/**
- * Función principal
- */
-function main() {
-    // ========== CONFIGURACIÓN ==========
+// ============================================
+// FUNCIÓN PRINCIPAL
+// ============================================
+
+function main(): array {
+    clearstatcache(true);
+    
+    $result = [
+        'success' => false,
+        'message' => '',
+        'timestamp' => date('Y-m-d H:i:s'),
+        'data' => [
+            'routes_count' => 0,
+            'devices_count' => 0,
+            'exported_files' => []
+        ],
+        'log' => []
+    ];
+    
     $config = [
         'database' => 'emaya',
         'username' => 'dsancho@digittecnic.com',
         'password' => 'Catalunya4**',
         'server'   => 'my.geotab.com',
-        'output_dir' => './routes',
-        'utm_zone' => 30  // Zona UTM para España (30 o 31). null = auto-detectar
+        'output_dir' => __DIR__ . '/routes',
+        'utm_zone' => 30
     ];
     
-    // Fechas de hoy (UTC)
     $fromDate = (new DateTime('today', new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z');
     $toDate = (new DateTime('tomorrow', new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z');
     
-    echo "===========================================\n";
-    echo "  GEOTAB - Exportar Routes (Polygon/UTM)\n";
-    echo "===========================================\n";
-    echo "Fecha desde: $fromDate\n";
-    echo "Fecha hasta: $toDate\n";
-    echo "Zona UTM: " . ($config['utm_zone'] ?? 'Auto') . "\n\n";
+    $result['log'][] = "Inicio: " . $result['timestamp'];
+    $result['log'][] = "Fecha desde: $fromDate";
+    $result['log'][] = "Fecha hasta: $toDate";
+    $result['log'][] = "Directorio: " . $config['output_dir'];
     
     try {
-        // 1. Conectar y autenticar
+        // Crear directorio principal
+        clearstatcache(true, $config['output_dir']);
+        if (!is_dir($config['output_dir'])) {
+            if (!@mkdir($config['output_dir'], 0777, true)) {
+                throw new Exception('No se pudo crear directorio: ' . $config['output_dir']);
+            }
+            @chmod($config['output_dir'], 0777);
+            $result['log'][] = "Directorio creado";
+        }
+        
+        clearstatcache(true, $config['output_dir']);
+        if (!is_writable($config['output_dir'])) {
+            throw new Exception('Directorio no escribible: ' . $config['output_dir']);
+        }
+        
+        $result['log'][] = "Directorio OK";
+        
+        // Autenticar
         $api = new GeotabAPI(
             $config['database'],
             $config['username'],
@@ -256,35 +293,32 @@ function main() {
             $config['server']
         );
         
-        echo "🔐 Autenticando...\n";
-        $auth = $api->authenticate();
-        echo "✅ Autenticación exitosa\n";
-        echo "   Servidor: " . $api->getServer() . "\n\n";
+        $result['log'][] = "Autenticando...";
+        $api->authenticate();
+        $result['log'][] = "Autenticación OK";
         
-        // 2. Obtener dispositivos
-        echo "🚛 Obteniendo dispositivos...\n";
+        // Obtener dispositivos
         $devicesResponse = $api->call('Get', ['typeName' => 'Device']);
         $devices = $devicesResponse['result'] ?? [];
-        echo "   Dispositivos: " . count($devices) . "\n\n";
+        $result['data']['devices_count'] = count($devices);
+        $result['log'][] = "Dispositivos: " . count($devices);
         
         $deviceIndex = [];
         foreach ($devices as $device) {
             $deviceIndex[$device['id']] = $device;
         }
         
-        // 3. Obtener Zones
-        echo "📍 Obteniendo Zones...\n";
+        // Obtener Zones
         $zonesResponse = $api->call('Get', ['typeName' => 'Zone']);
         $zones = $zonesResponse['result'] ?? [];
-        echo "   Zones: " . count($zones) . "\n\n";
+        $result['log'][] = "Zones: " . count($zones);
         
         $zoneIndex = [];
         foreach ($zones as $zone) {
             $zoneIndex[$zone['id']] = $zone;
         }
         
-        // 4. Obtener Routes
-        echo "🗺️  Obteniendo Routes...\n";
+        // Obtener Routes
         $routesResponse = $api->call('Get', [
             'typeName' => 'Route',
             'search' => [
@@ -294,124 +328,40 @@ function main() {
         ]);
         
         $routes = $routesResponse['result'] ?? [];
-        echo "   Routes: " . count($routes) . "\n\n";
+        $result['data']['routes_count'] = count($routes);
+        $result['log'][] = "Routes: " . count($routes);
         
         if (empty($routes)) {
-            echo "⚠️  No se encontraron routes para hoy.\n";
-            return;
+            $result['success'] = true;
+            $result['message'] = 'No hay routes para hoy';
+            return $result;
         }
         
-        // 5. Agrupar por dispositivo
+        // Agrupar por dispositivo
         $routesByDevice = [];
-        $routesWithoutDevice = [];
-        
         foreach ($routes as $route) {
             $deviceId = $route['device']['id'] ?? null;
-            
             if ($deviceId && $deviceId !== 'NoDeviceId') {
                 $routesByDevice[$deviceId][] = $route;
-            } else {
-                $routesWithoutDevice[] = $route;
             }
         }
         
-        // 6. Crear directorio principal
-        if (!is_dir($config['output_dir'])) {
-            mkdir($config['output_dir'], 0755, true);
-        }
-        
-        echo "📁 Exportando a: {$config['output_dir']}\n\n";
-        
-        // 7. Procesar cada dispositivo
+        // Procesar cada dispositivo
         foreach ($routesByDevice as $deviceId => $deviceRoutes) {
             $device = $deviceIndex[$deviceId] ?? null;
             $deviceName = $device['name'] ?? $deviceId;
-            
-            // Usar ID del dispositivo como nombre de carpeta
             $deviceFolder = $config['output_dir'] . '/' . $deviceId;
             
+            // Crear carpeta del dispositivo
+            clearstatcache(true, $deviceFolder);
             if (!is_dir($deviceFolder)) {
-                mkdir($deviceFolder, 0755, true);
+                @mkdir($deviceFolder, 0777, true);
+                @chmod($deviceFolder, 0777);
             }
             
-            echo "📂 {$deviceId} ({$deviceName})\n";
+            $result['log'][] = "Procesando: $deviceId ($deviceName)";
             
             foreach ($deviceRoutes as $route) {
-                $routeId = $route['id'] ?? 'unknown';
-                $routeName = $route['name'] ?? $routeId;
-                
-                // Extraer waypoints
-                $waypoints = [];
-                $routePlanItems = $route['routePlanItemCollection'] ?? [];
-                
-                foreach ($routePlanItems as $planItem) {
-                    $zoneId = $planItem['zone']['id'] ?? null;
-                    $zone = $zoneId ? ($zoneIndex[$zoneId] ?? null) : null;
-                    
-                    $centerPoint = null;
-                    if ($zone && isset($zone['points']) && !empty($zone['points'])) {
-                        $latSum = 0;
-                        $lonSum = 0;
-                        $count = count($zone['points']);
-                        
-                        foreach ($zone['points'] as $point) {
-                            $latSum += $point['y'] ?? 0;
-                            $lonSum += $point['x'] ?? 0;
-                        }
-                        
-                        $centerPoint = [
-                            'latitude' => $latSum / $count,
-                            'longitude' => $lonSum / $count
-                        ];
-                    }
-                    
-                    $waypoints[] = [
-                        'sequence' => $planItem['sequence'] ?? count($waypoints),
-                        'zone' => [
-                            'id' => $zoneId,
-                            'name' => $zone['name'] ?? 'Desconocida',
-                            'centerPoint' => $centerPoint
-                        ]
-                    ];
-                }
-                
-                // Ordenar por secuencia
-                usort($waypoints, fn($a, $b) => ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0));
-                
-                // Generar JSON en formato polygon/stations
-                $polygonData = generateRoutePolygonJSON($waypoints, $config['utm_zone']);
-                
-                // Guardar JSON polygon con ID de la ruta como nombre
-                $polygonFile = $deviceFolder . '/' . $routeId . '.json';
-                file_put_contents(
-                    $polygonFile,
-                    json_encode($polygonData, JSON_PRETTY_PRINT)
-                );
-                
-                echo "   └── {$routeId}.json ({$routeName})\n";
-                echo "       - Puntos: " . count($polygonData['stations']) . "\n";
-                echo "       - Zona UTM: " . ($polygonData['_metadata']['utmZone'] ?? 'N/A') . "\n";
-                
-                // Mostrar puntos
-                foreach ($polygonData['polygon']['lineString']['points'] as $idx => $point) {
-                    $station = $polygonData['stations'][$idx] ?? [];
-                    $wpName = $waypoints[$idx]['zone']['name'] ?? 'Punto';
-                    $type = $station['wayPointType'] ?? 'VIA';
-                    echo "          [{$type}] #{$idx}: {$wpName} (x:{$point['x']}, y:{$point['y']})\n";
-                }
-            }
-            
-            echo "\n";
-        }
-        
-        // 8. Routes sin dispositivo
-        if (!empty($routesWithoutDevice)) {
-            $noDeviceFolder = $config['output_dir'] . '/_sin_dispositivo';
-            mkdir($noDeviceFolder, 0755, true);
-            
-            echo "📂 _sin_dispositivo (Routes sin dispositivo asignado)\n";
-            
-            foreach ($routesWithoutDevice as $route) {
                 $routeId = $route['id'] ?? 'unknown';
                 $routeName = $route['name'] ?? $routeId;
                 
@@ -438,6 +388,7 @@ function main() {
                     $waypoints[] = [
                         'sequence' => $planItem['sequence'] ?? count($waypoints),
                         'zone' => [
+                            'id' => $zoneId,
                             'name' => $zone['name'] ?? 'Desconocida',
                             'centerPoint' => $centerPoint
                         ]
@@ -447,27 +398,46 @@ function main() {
                 usort($waypoints, fn($a, $b) => ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0));
                 
                 $polygonData = generateRoutePolygonJSON($waypoints, $config['utm_zone']);
+                $polygonFile = $deviceFolder . '/' . $routeId . '.json';
+                $jsonContent = json_encode($polygonData, JSON_PRETTY_PRINT);
                 
-                // Guardar con ID de la ruta como nombre
-                file_put_contents(
-                    $noDeviceFolder . '/' . $routeId . '.json',
-                    json_encode($polygonData, JSON_PRETTY_PRINT)
-                );
+                $writeResult = @file_put_contents($polygonFile, $jsonContent, LOCK_EX);
                 
-                echo "   └── {$routeId}.json ({$routeName}) - {$polygonData['_metadata']['pointCount']} puntos\n";
+                if ($writeResult !== false) {
+                    @chmod($polygonFile, 0666);
+                    
+                    $result['data']['exported_files'][] = [
+                        'device_id' => $deviceId,
+                        'device_name' => $deviceName,
+                        'route_id' => $routeId,
+                        'route_name' => $routeName,
+                        'file' => $polygonFile,
+                        'points' => count($polygonData['stations']),
+                        'bytes' => $writeResult
+                    ];
+                    
+                    $result['log'][] = "  Exportado: {$routeId}.json - $writeResult bytes";
+                } else {
+                    $result['log'][] = "  ERROR: {$routeId}.json";
+                }
             }
-            echo "\n";
         }
         
-        echo "===========================================\n";
-        echo "✅ Exportación completada\n";
-        echo "   Total routes: " . count($routes) . "\n";
-        echo "===========================================\n";
+        $result['success'] = true;
+        $result['message'] = 'Exportación completada';
+        $result['log'][] = "Completado: " . count($result['data']['exported_files']) . " archivos";
         
     } catch (Exception $e) {
-        echo "❌ Error: " . $e->getMessage() . "\n";
-        exit(1);
+        $result['success'] = false;
+        $result['message'] = 'Error: ' . $e->getMessage();
+        $result['log'][] = "ERROR: " . $e->getMessage();
     }
+    
+    return $result;
 }
 
-main();
+// ============================================
+// EJECUTAR
+// ============================================
+$response = main();
+echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
