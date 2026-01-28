@@ -18,7 +18,8 @@ geotab.addin.sygic = function (api, state) {
   let cachedUser = null;
 
   // URL base para descargar rutas en Sygic (modificar si cambia)
-  const SYGIC_ROUTES_BASE_URL = 'https://dsanchodigittecnic.github.io/sygic/';
+  // const SYGIC_ROUTES_BASE_URL = 'https://dsanchodigittecnic.github.io/sygic/';
+  const SYGIC_ROUTES_BASE_URL = 'https://iberotrack.com/sygic/routes/';
 
   let geotabApi = ApiWrapper(api);
 
