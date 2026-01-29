@@ -1,7 +1,7 @@
 <?php
 
 // ============================================
-// ANTI-CACHÉ: Redirección automática con timestamp
+// ANTI-CACHÃ‰: RedirecciÃ³n automÃ¡tica con timestamp
 // ============================================
 /* if (!isset($_GET['_nc'])) {
     header('Location: ' . $_SERVER['PHP_SELF'] . '?_nc=' . time());
@@ -9,7 +9,7 @@
 }*/
 
 // ============================================
-// DESACTIVAR CACHÉ HTTP
+// DESACTIVAR CACHÃ‰ HTTP
 // ============================================
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Limpiar caché de archivos
+// Limpiar cachÃ© de archivos
 clearstatcache(true);
 
 // ============================================
@@ -66,7 +66,7 @@ class GeotabAPI {
             return $response['result'];
         }
         
-        throw new Exception('Error de autenticación: ' . json_encode($response));
+        throw new Exception('Error de autenticaciÃ³n: ' . json_encode($response));
     }
     
     public function getServer(): string {
@@ -116,90 +116,21 @@ class GeotabAPI {
     }
 }
 
-function latLonToUTM(float $lat, float $lon, ?int $forceZone = null): array {
-    $a = 6378137.0;
-    $f = 1 / 298.257223563;
-    $k0 = 0.9996;
-    
-    $e2 = 2 * $f - $f * $f;
-    $e4 = $e2 * $e2;
-    $e6 = $e4 * $e2;
-    $ep2 = $e2 / (1 - $e2);
-    
-    if ($forceZone !== null) {
-        $zone = $forceZone;
-    } else {
-        $zone = (int) floor(($lon + 180) / 6) + 1;
-        if ($lat >= 56 && $lat < 64 && $lon >= 3 && $lon < 12) {
-            $zone = 32;
-        }
-    }
-    
-    $lon0 = ($zone - 1) * 6 - 180 + 3;
-    
-    $latRad = deg2rad($lat);
-    $lonRad = deg2rad($lon);
-    $lon0Rad = deg2rad($lon0);
-    
-    $N = $a / sqrt(1 - $e2 * sin($latRad) * sin($latRad));
-    $T = tan($latRad) * tan($latRad);
-    $C = $ep2 * cos($latRad) * cos($latRad);
-    $A = cos($latRad) * ($lonRad - $lon0Rad);
-    
-    $M = $a * (
-        (1 - $e2/4 - 3*$e4/64 - 5*$e6/256) * $latRad
-        - (3*$e2/8 + 3*$e4/32 + 45*$e6/1024) * sin(2*$latRad)
-        + (15*$e4/256 + 45*$e6/1024) * sin(4*$latRad)
-        - (35*$e6/3072) * sin(6*$latRad)
-    );
-    
-    $x = $k0 * $N * (
-        $A 
-        + (1 - $T + $C) * pow($A, 3) / 6
-        + (5 - 18*$T + $T*$T + 72*$C - 58*$ep2) * pow($A, 5) / 120
-    ) + 500000;
-    
-    $y = $k0 * (
-        $M + $N * tan($latRad) * (
-            $A*$A/2
-            + (5 - $T + 9*$C + 4*$C*$C) * pow($A, 4) / 24
-            + (61 - 58*$T + $T*$T + 600*$C - 330*$ep2) * pow($A, 6) / 720
-        )
-    );
-    
-    if ($lat < 0) {
-        $y += 10000000;
-    }
-    
-    return [
-        'x' => (int) round($x),
-        'y' => (int) round($y),
-        'zone' => $zone
-    ];
-}
-
-function generateRoutePolygonJSON(array $waypoints, ?int $utmZone = null): array {
+/**
+ * Genera el JSON de la ruta con coordenadas WGS84 Ã— 100,000
+ */
+function generateRoutePolygonJSON(array $waypoints): array {
     $points = [];
     $stations = [];
-    $detectedZone = null;
     
     foreach ($waypoints as $index => $waypoint) {
         $centerPoint = $waypoint['zone']['centerPoint'] ?? null;
         
         if ($centerPoint && isset($centerPoint['latitude']) && isset($centerPoint['longitude'])) {
-            $utm = latLonToUTM(
-                $centerPoint['latitude'],
-                $centerPoint['longitude'],
-                $utmZone ?? $detectedZone
-            );
-            
-            if ($detectedZone === null) {
-                $detectedZone = $utm['zone'];
-            }
-            
+            // WGS84 multiplicado por 100,000
             $points[] = [
-                'x' => $utm['x'],
-                'y' => $utm['y']
+                'x' => (int) round($centerPoint['longitude'] * 100000),
+                'y' => (int) round($centerPoint['latitude'] * 100000)
             ];
             
             $waypointType = 'VIA';
@@ -224,15 +155,14 @@ function generateRoutePolygonJSON(array $waypoints, ?int $utmZone = null): array
         ],
         'stations' => $stations,
         '_metadata' => [
-            'utmZone' => $detectedZone,
             'pointCount' => count($points),
-            'coordinateSystem' => 'UTM WGS84'
+            'coordinateSystem' => 'WGS84 x 100000'
         ]
     ];
 }
 
 // ============================================
-// FUNCIÓN PRINCIPAL
+// FUNCIÃ“N PRINCIPAL
 // ============================================
 
 function main(): array {
@@ -255,8 +185,7 @@ function main(): array {
         'username' => 'dsancho@digittecnic.com',
         'password' => 'Catalunya4**',
         'server'   => 'my.geotab.com',
-        'output_dir' => __DIR__ . '/routes',
-        'utm_zone' => 30
+        'output_dir' => __DIR__ . '/routes'
     ];
     
     $fromDate = (new DateTime('today', new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.v\Z');
@@ -295,7 +224,7 @@ function main(): array {
         
         $result['log'][] = "Autenticando...";
         $api->authenticate();
-        $result['log'][] = "Autenticación OK";
+        $result['log'][] = "AutenticaciÃ³n OK";
         
         // Obtener dispositivos
         $devicesResponse = $api->call('Get', ['typeName' => 'Device']);
@@ -397,7 +326,7 @@ function main(): array {
                 
                 usort($waypoints, fn($a, $b) => ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0));
                 
-                $polygonData = generateRoutePolygonJSON($waypoints, $config['utm_zone']);
+                $polygonData = generateRoutePolygonJSON($waypoints);
                 $polygonFile = $deviceFolder . '/' . $routeId . '.json';
                 $jsonContent = json_encode($polygonData, JSON_PRETTY_PRINT);
                 
@@ -424,7 +353,7 @@ function main(): array {
         }
         
         $result['success'] = true;
-        $result['message'] = 'Exportación completada';
+        $result['message'] = 'ExportaciÃ³n completada';
         $result['log'][] = "Completado: " . count($result['data']['exported_files']) . " archivos";
         
     } catch (Exception $e) {
