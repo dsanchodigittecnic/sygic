@@ -478,10 +478,5 @@
             "polyIdx": 58,
             "wayPointType": "DEST"
         }
-    ],
-    "_metadata": {
-        "utmZone": 30,
-        "pointCount": 59,
-        "coordinateSystem": "UTM WGS84"
-    }
+    ]
 }
