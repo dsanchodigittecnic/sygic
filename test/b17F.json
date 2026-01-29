@@ -2,127 +2,485 @@
     "polygon": {
         "lineString": {
             "points": [
-                { "x": 985157, "y": 4395879 },
-                { "x": 985041, "y": 4395851 },
-                { "x": 985338, "y": 4396088 },
-                { "x": 985377, "y": 4395974 },
-                { "x": 985226, "y": 4396027 },
-                { "x": 985324, "y": 4396060 },
-                { "x": 985395, "y": 4396083 },
-                { "x": 985477, "y": 4396113 },
-                { "x": 985464, "y": 4395999 },
-                { "x": 985424, "y": 4396058 },
-                { "x": 985593, "y": 4395926 },
-                { "x": 985613, "y": 4395999 },
-                { "x": 985594, "y": 4396108 },
-                { "x": 985673, "y": 4395695 },
-                { "x": 985747, "y": 4395784 },
-                { "x": 985904, "y": 4395597 },
-                { "x": 985838, "y": 4395729 },
-                { "x": 985944, "y": 4395499 },
-                { "x": 986008, "y": 4395235 },
-                { "x": 985981, "y": 4395382 },
-                { "x": 985975, "y": 4395091 },
-                { "x": 985191, "y": 4395184 },
-                { "x": 985347, "y": 4395233 },
-                { "x": 985250, "y": 4395252 },
-                { "x": 985024, "y": 4395017 },
-                { "x": 984896, "y": 4395210 },
-                { "x": 984444, "y": 4395407 },
-                { "x": 984249, "y": 4395504 },
-                { "x": 984222, "y": 4395411 },
-                { "x": 984886, "y": 4395516 },
-                { "x": 985423, "y": 4395671 },
-                { "x": 985371, "y": 4395717 },
-                { "x": 985221, "y": 4395936 },
-                { "x": 985270, "y": 4395898 },
-                { "x": 985085, "y": 4395486 },
-                { "x": 985035, "y": 4395501 },
-                { "x": 984967, "y": 4395525 },
-                { "x": 985500, "y": 4396228 },
-                { "x": 985464, "y": 4396285 },
-                { "x": 985352, "y": 4396392 },
-                { "x": 985390, "y": 4396408 },
-                { "x": 985309, "y": 4396435 },
-                { "x": 985313, "y": 4396518 },
-                { "x": 985243, "y": 4396714 },
-                { "x": 985234, "y": 4396768 },
-                { "x": 985294, "y": 4396853 },
-                { "x": 984685, "y": 4396344 },
-                { "x": 984664, "y": 4396271 },
-                { "x": 984651, "y": 4396203 },
-                { "x": 984620, "y": 4396093 },
-                { "x": 984620, "y": 4396042 },
-                { "x": 984613, "y": 4395912 },
-                { "x": 984617, "y": 4395886 },
-                { "x": 984613, "y": 4395798 },
-                { "x": 984608, "y": 4395745 },
-                { "x": 984686, "y": 4395650 },
-                { "x": 984589, "y": 4395495 },
-                { "x": 984677, "y": 4395573 },
-                { "x": 984553, "y": 4395644 }
+                {
+                    "x": 264710,
+                    "y": 3957528
+                },
+                {
+                    "x": 264575,
+                    "y": 3957510
+                },
+                {
+                    "x": 264935,
+                    "y": 3957706
+                },
+                {
+                    "x": 264973,
+                    "y": 3957601
+                },
+                {
+                    "x": 264801,
+                    "y": 3957658
+                },
+                {
+                    "x": 264917,
+                    "y": 3957682
+                },
+                {
+                    "x": 265002,
+                    "y": 3957698
+                },
+                {
+                    "x": 265098,
+                    "y": 3957720
+                },
+                {
+                    "x": 265075,
+                    "y": 3957619
+                },
+                {
+                    "x": 265033,
+                    "y": 3957674
+                },
+                {
+                    "x": 265219,
+                    "y": 3957546
+                },
+                {
+                    "x": 265247,
+                    "y": 3957610
+                },
+                {
+                    "x": 265233,
+                    "y": 3957709
+                },
+                {
+                    "x": 265295,
+                    "y": 3957334
+                },
+                {
+                    "x": 265388,
+                    "y": 3957410
+                },
+                {
+                    "x": 265556,
+                    "y": 3957233
+                },
+                {
+                    "x": 265489,
+                    "y": 3957355
+                },
+                {
+                    "x": 265595,
+                    "y": 3957143
+                },
+                {
+                    "x": 265650,
+                    "y": 3956903
+                },
+                {
+                    "x": 265629,
+                    "y": 3957036
+                },
+                {
+                    "x": 265600,
+                    "y": 3956776
+                },
+                {
+                    "x": 264700,
+                    "y": 3956903
+                },
+                {
+                    "x": 264883,
+                    "y": 3956938
+                },
+                {
+                    "x": 264773,
+                    "y": 3956961
+                },
+                {
+                    "x": 264494,
+                    "y": 3956763
+                },
+                {
+                    "x": 264360,
+                    "y": 3956943
+                },
+                {
+                    "x": 263850,
+                    "y": 3957146
+                },
+                {
+                    "x": 263632,
+                    "y": 3957243
+                },
+                {
+                    "x": 263593,
+                    "y": 3957162
+                },
+                {
+                    "x": 264370,
+                    "y": 3957218
+                },
+                {
+                    "x": 265003,
+                    "y": 3957327
+                },
+                {
+                    "x": 264946,
+                    "y": 3957371
+                },
+                {
+                    "x": 264789,
+                    "y": 3957576
+                },
+                {
+                    "x": 264842,
+                    "y": 3957539
+                },
+                {
+                    "x": 264598,
+                    "y": 3957180
+                },
+                {
+                    "x": 264541,
+                    "y": 3957197
+                },
+                {
+                    "x": 264465,
+                    "y": 3957222
+                },
+                {
+                    "x": 265134,
+                    "y": 3957822
+                },
+                {
+                    "x": 265095,
+                    "y": 3957876
+                },
+                {
+                    "x": 264974,
+                    "y": 3957977
+                },
+                {
+                    "x": 265019,
+                    "y": 3957989
+                },
+                {
+                    "x": 264927,
+                    "y": 3958019
+                },
+                {
+                    "x": 264938,
+                    "y": 3958093
+                },
+                {
+                    "x": 264871,
+                    "y": 3958272
+                },
+                {
+                    "x": 264865,
+                    "y": 3958321
+                },
+                {
+                    "x": 264941,
+                    "y": 3958394
+                },
+                {
+                    "x": 264198,
+                    "y": 3957972
+                },
+                {
+                    "x": 264168,
+                    "y": 3957908
+                },
+                {
+                    "x": 264148,
+                    "y": 3957848
+                },
+                {
+                    "x": 264104,
+                    "y": 3957751
+                },
+                {
+                    "x": 264100,
+                    "y": 3957705
+                },
+                {
+                    "x": 264083,
+                    "y": 3957589
+                },
+                {
+                    "x": 264085,
+                    "y": 3957565
+                },
+                {
+                    "x": 264074,
+                    "y": 3957486
+                },
+                {
+                    "x": 264065,
+                    "y": 3957440
+                },
+                {
+                    "x": 264148,
+                    "y": 3957350
+                },
+                {
+                    "x": 264024,
+                    "y": 3957216
+                },
+                {
+                    "x": 264132,
+                    "y": 3957282
+                },
+                {
+                    "x": 263994,
+                    "y": 3957352
+                }
             ]
         }
     },
     "stations": [
-        { "polyIdx": 0, "wayPointType": "START" },
-        { "polyIdx": 1, "wayPointType": "VIA" },
-        { "polyIdx": 2, "wayPointType": "VIA" },
-        { "polyIdx": 3, "wayPointType": "VIA" },
-        { "polyIdx": 4, "wayPointType": "VIA" },
-        { "polyIdx": 5, "wayPointType": "VIA" },
-        { "polyIdx": 6, "wayPointType": "VIA" },
-        { "polyIdx": 7, "wayPointType": "VIA" },
-        { "polyIdx": 8, "wayPointType": "VIA" },
-        { "polyIdx": 9, "wayPointType": "VIA" },
-        { "polyIdx": 10, "wayPointType": "VIA" },
-        { "polyIdx": 11, "wayPointType": "VIA" },
-        { "polyIdx": 12, "wayPointType": "VIA" },
-        { "polyIdx": 13, "wayPointType": "VIA" },
-        { "polyIdx": 14, "wayPointType": "VIA" },
-        { "polyIdx": 15, "wayPointType": "VIA" },
-        { "polyIdx": 16, "wayPointType": "VIA" },
-        { "polyIdx": 17, "wayPointType": "VIA" },
-        { "polyIdx": 18, "wayPointType": "VIA" },
-        { "polyIdx": 19, "wayPointType": "VIA" },
-        { "polyIdx": 20, "wayPointType": "VIA" },
-        { "polyIdx": 21, "wayPointType": "VIA" },
-        { "polyIdx": 22, "wayPointType": "VIA" },
-        { "polyIdx": 23, "wayPointType": "VIA" },
-        { "polyIdx": 24, "wayPointType": "VIA" },
-        { "polyIdx": 25, "wayPointType": "VIA" },
-        { "polyIdx": 26, "wayPointType": "VIA" },
-        { "polyIdx": 27, "wayPointType": "VIA" },
-        { "polyIdx": 28, "wayPointType": "VIA" },
-        { "polyIdx": 29, "wayPointType": "VIA" },
-        { "polyIdx": 30, "wayPointType": "VIA" },
-        { "polyIdx": 31, "wayPointType": "VIA" },
-        { "polyIdx": 32, "wayPointType": "VIA" },
-        { "polyIdx": 33, "wayPointType": "VIA" },
-        { "polyIdx": 34, "wayPointType": "VIA" },
-        { "polyIdx": 35, "wayPointType": "VIA" },
-        { "polyIdx": 36, "wayPointType": "VIA" },
-        { "polyIdx": 37, "wayPointType": "VIA" },
-        { "polyIdx": 38, "wayPointType": "VIA" },
-        { "polyIdx": 39, "wayPointType": "VIA" },
-        { "polyIdx": 40, "wayPointType": "VIA" },
-        { "polyIdx": 41, "wayPointType": "VIA" },
-        { "polyIdx": 42, "wayPointType": "VIA" },
-        { "polyIdx": 43, "wayPointType": "VIA" },
-        { "polyIdx": 44, "wayPointType": "VIA" },
-        { "polyIdx": 45, "wayPointType": "VIA" },
-        { "polyIdx": 46, "wayPointType": "VIA" },
-        { "polyIdx": 47, "wayPointType": "VIA" },
-        { "polyIdx": 48, "wayPointType": "VIA" },
-        { "polyIdx": 49, "wayPointType": "VIA" },
-        { "polyIdx": 50, "wayPointType": "VIA" },
-        { "polyIdx": 51, "wayPointType": "VIA" },
-        { "polyIdx": 52, "wayPointType": "VIA" },
-        { "polyIdx": 53, "wayPointType": "VIA" },
-        { "polyIdx": 54, "wayPointType": "VIA" },
-        { "polyIdx": 55, "wayPointType": "VIA" },
-        { "polyIdx": 56, "wayPointType": "VIA" },
-        { "polyIdx": 57, "wayPointType": "VIA" },
-        { "polyIdx": 58, "wayPointType": "DEST" }
-    ]
+        {
+            "polyIdx": 0,
+            "wayPointType": "START"
+        },
+        {
+            "polyIdx": 1,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 2,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 3,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 4,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 5,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 6,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 7,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 8,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 9,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 10,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 11,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 12,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 13,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 14,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 15,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 16,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 17,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 18,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 19,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 20,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 21,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 22,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 23,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 24,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 25,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 26,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 27,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 28,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 29,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 30,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 31,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 32,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 33,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 34,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 35,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 36,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 37,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 38,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 39,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 40,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 41,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 42,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 43,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 44,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 45,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 46,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 47,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 48,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 49,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 50,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 51,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 52,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 53,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 54,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 55,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 56,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 57,
+            "wayPointType": "VIA"
+        },
+        {
+            "polyIdx": 58,
+            "wayPointType": "DEST"
+        }
+    ],
+    "_metadata": {
+        "pointCount": 59,
+        "coordinateSystem": "WGS84 x 100000"
+    }
 }
